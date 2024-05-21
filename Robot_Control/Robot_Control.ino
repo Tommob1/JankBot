@@ -15,8 +15,8 @@ int servo2Min = 10;  // replace with the minimum angle your servo2 can safely tu
 int servo2Max = 170; // replace with the maximum angle your servo2 can safely turn to
 
 void setup() {
-  servo1.attach(10);
-  servo2.attach(11);
+  servo1.attach(11);
+  servo2.attach(10);
 
   Serial.begin(9600); // Start serial communication at 9600 baud rate
 }
@@ -25,8 +25,8 @@ void loop() {
   joyX = analogRead(A0);
   joyY = analogRead(A1);
 
-  // Map the joystick values to the servo values within the calibrated range
-  servo1Pos = map(joyX, 0, 1023, servo1Min, servo1Max);
+  // Invert the joystick values mapping for servo1
+  servo1Pos = map(joyX, 0, 1023, servo1Max, servo1Min);
   servo2Pos = map(joyY, 0, 1023, servo2Min, servo2Max);
 
   // Update the servo positions
@@ -41,4 +41,3 @@ void loop() {
 
   delay(15); // Delay to reduce jitter
 }
-
