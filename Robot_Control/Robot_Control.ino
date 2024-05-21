@@ -36,3 +36,4 @@ void loop() {
   Serial.println(servo2Pos);
 
   delay(15);
+}
