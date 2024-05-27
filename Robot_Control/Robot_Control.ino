@@ -52,14 +52,22 @@ void loop() {
 
   average = total / numReadings;
 
-  servo1Pos = map(joyX, 0, 1023, servo1Max, servo1Min);
-  servo2Pos = map(joyY, 0, 1023, servo2Min, servo2Max);
-  servo3Pos = map(average, 0, 1023, servo3Min, servo3Max);
+  servo1Pos = map(joyX, 200, 823, servo1Max, servo1Min); // Reduced sensitivity range
+  servo2Pos = map(joyY, 200, 823, servo2Min, servo2Max); // Reduced sensitivity range
 
   servo1.write(servo1Pos);
   servo2.write(servo2Pos);
+
+  // Control servo 3 based on the position of servo 2 (opposite movement)
+  if (servo2Pos < 90) { // Upright position
+    servo3Pos = map(servo2Pos, servo2Min, 90, servo3Min, (servo3Min + servo3Max) / 2);
+  } else { // Down position
+    servo3Pos = map(servo2Pos, 90, servo2Max, (servo3Min + servo3Max) / 2, servo3Max);
+  }
+
   servo3.write(servo3Pos);
 
+  // Print positions for debugging
   Serial.print("Servo1 Position: ");
   Serial.println(servo1Pos);
   Serial.print("Servo2 Position: ");
@@ -67,5 +75,5 @@ void loop() {
   Serial.print("Servo3 Position: ");
   Serial.println(servo3Pos);
 
-  delay(15);
+  delay(15); // Small delay to allow for smooth operation
 }
