@@ -14,3 +14,10 @@ VERSION 2 (FEBUARY 2024):
 
 
 Joystick control of omnidirectional servo motor setup.
+
+
+VERSION 3 (MAY 2024):
+
+
+
+3rd servo motor joint for improved dexterity
