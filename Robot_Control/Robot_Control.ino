@@ -24,7 +24,15 @@ int readIndex = 0;
 int total = 0;
 int average = 0;
 
+const int buttonPin = 13;
+bool servosActive = true;
+bool lastButtonState = LOW;
+bool currentButtonState = LOW;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+
 void setup() {
+  pinMode(buttonPin, INPUT);
   servo1.attach(11);
   servo2.attach(10);
   servo3.attach(9);
@@ -36,42 +44,62 @@ void setup() {
 }
 
 void loop() {
-  joyX = analogRead(A0);
-  joyY = analogRead(A1);
+  int buttonReading = digitalRead(buttonPin);
 
-  pot = analogRead(A2);
-
-  total = total - readings[readIndex];
-  readings[readIndex] = pot;
-  total = total + readings[readIndex];
-  readIndex = readIndex + 1;
-
-  if (readIndex >= numReadings) {
-    readIndex = 0;
+  if (buttonReading != lastButtonState) {
+    lastDebounceTime = millis();
   }
 
-  average = total / numReadings;
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (buttonReading != currentButtonState) {
+      currentButtonState = buttonReading;
 
-  servo1Pos = map(joyX, 200, 823, servo1Max, servo1Min);
-  servo2Pos = map(joyY, 200, 823, servo2Min, servo2Max);
-
-  servo1.write(servo1Pos);
-  servo2.write(servo2Pos);
-
-  if (servo2Pos < 90) {
-    servo3Pos = map(servo2Pos, servo2Min, 90, servo3Min, (servo3Min + servo3Max) / 2);
-  } else {
-    servo3Pos = map(servo2Pos, 90, servo2Max, (servo3Min + servo3Max) / 2, servo3Max);
+      if (currentButtonState == HIGH) {
+        servosActive = !servosActive;
+      }
+    }
   }
 
-  servo3.write(servo3Pos);
+  lastButtonState = buttonReading;
 
-  Serial.print("Servo1 Position: ");
-  Serial.println(servo1Pos);
-  Serial.print("Servo2 Position: ");
-  Serial.println(servo2Pos);
-  Serial.print("Servo3 Position: ");
-  Serial.println(servo3Pos);
+  if (servosActive) {
+    joyX = analogRead(A0);
+    joyY = analogRead(A1);
+
+    pot = analogRead(A2);
+
+    total = total - readings[readIndex];
+    readings[readIndex] = pot;
+    total = total + readings[readIndex];
+    readIndex = readIndex + 1;
+
+    if (readIndex >= numReadings) {
+      readIndex = 0;
+    }
+
+    average = total / numReadings;
+
+    servo1Pos = map(joyX, 200, 823, servo1Max, servo1Min);
+    servo2Pos = map(joyY, 200, 823, servo2Min, servo2Max);
+
+    servo1.write(servo1Pos);
+    servo2.write(servo2Pos);
+
+    if (servo2Pos < 90) {
+      servo3Pos = map(servo2Pos, servo2Min, 90, servo3Min, (servo3Min + servo3Max) / 2);
+    } else {
+      servo3Pos = map(servo2Pos, 90, servo2Max, (servo3Min + servo3Max) / 2, servo3Max);
+    }
+
+    servo3.write(servo3Pos);
+
+    Serial.print("Servo1 Position: ");
+    Serial.println(servo1Pos);
+    Serial.print("Servo2 Position: ");
+    Serial.println(servo2Pos);
+    Serial.print("Servo3 Position: ");
+    Serial.println(servo3Pos);
+  }
 
   delay(15);
 }
