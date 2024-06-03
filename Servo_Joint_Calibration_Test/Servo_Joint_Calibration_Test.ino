@@ -25,39 +25,39 @@ void setup() {
 void loop() {
   for (servo1Pos = servo1Right; servo1Pos >= servo1Left; servo1Pos -= 1) {
     servo1.write(servo1Pos);
-    delay(15);
+    delay(5);
   }
 
   for (servo2Pos = servo2Up; servo2Pos <= servo2Down; servo2Pos += 1) {
     servo2.write(servo2Pos);
     servo3Pos = map(servo2Pos, servo2Up, servo2Down, servo3Min, servo3Max);
     servo3.write(servo3Pos);
-    delay(15);
+    delay(10);
   }
 
   for (servo2Pos = servo2Down; servo2Pos >= servo2Up; servo2Pos -= 1) {
     servo2.write(servo2Pos);
     servo3Pos = map(servo2Pos, servo2Down, servo2Up, servo3Max, servo3Min);
     servo3.write(servo3Pos);
-    delay(15);
+    delay(10);
   }
 
   for (servo1Pos = servo1Left; servo1Pos <= servo1Right; servo1Pos += 1) {
     servo1.write(servo1Pos);
-    delay(15);
+    delay(5);
   }
 
   for (servo2Pos = servo2Up; servo2Pos <= servo2Down; servo2Pos += 1) {
     servo2.write(servo2Pos);
     servo3Pos = map(servo2Pos, servo2Up, servo2Down, servo3Min, servo3Max);
     servo3.write(servo3Pos);
-    delay(15);
+    delay(10);
   }
 
   for (servo2Pos = servo2Down; servo2Pos >= servo2Up; servo2Pos -= 1) {
     servo2.write(servo2Pos);
     servo3Pos = map(servo2Pos, servo2Down, servo2Up, servo3Max, servo3Min);
     servo3.write(servo3Pos);
-    delay(15);
+    delay(10);
   }
 }
