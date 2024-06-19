@@ -12,11 +12,11 @@ int servo2Pos;
 int servo3Pos;
 
 int servo1Min = 10;
-int servo1Max = 170;
+int servo1Max = 200;
 int servo2Min = 10;
-int servo2Max = 170;
+int servo2Max = 200;
 int servo3Min = 10;
-int servo3Max = 170;
+int servo3Max = 200;
 
 const int numReadings = 10;
 int readings[numReadings];
