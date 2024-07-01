@@ -34,7 +34,7 @@ bool currentButtonState = LOW;
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;
 
-int speedFactor = 5; // Adjust this value to change the speed of the servo movement
+int speedFactor = 5;
 
 void setup() {
   pinMode(buttonPin, INPUT);
