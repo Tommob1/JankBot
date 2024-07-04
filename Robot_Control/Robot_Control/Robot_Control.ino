@@ -6,7 +6,7 @@ int pos1 = 90;
 int pos2 = 90;
 
 void setup() {
-  servo1.attach(9);
+  servo1.attach(11);
   servo2.attach(10);
   servo1.write(pos1);
   servo2.write(pos2);
