@@ -3,7 +3,7 @@ from pynput import mouse
 import tkinter as tk
 
 # Replace with your identified serial port
-# ser = serial.Serial('/dev/tty.usbmodemXXXXX', 9600)  # Update this to your specific port
+ser = serial.Serial('/dev/tty.usbmodem11401', 9600)
 
 # Initialize global variables
 mouse_x, mouse_y = 0, 0
