@@ -11,8 +11,8 @@ listener = None
 def on_move(x, y):
     global mouse_x, mouse_y, servo1_pos, servo2_pos, servo3_pos
     mouse_x, mouse_y = x, y
-    servo1_pos = int(map_value(mouse_y, 0, 1080, 10, 170))  # Adjust screen height as needed
-    servo2_pos = int(map_value(mouse_x, 0, 1920, 10, 170))  # Adjust screen width as needed
+    servo1_pos = int(map_value(mouse_x, 0, 1920, 10, 170))  # Adjust screen height as needed
+    servo2_pos = int(map_value(mouse_y, 0, 1080, 10, 170))  # Adjust screen width as needed
     servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
     update_telemetry()
     send_command()
