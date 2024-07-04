@@ -1,44 +1,48 @@
 import serial
-from pynput.mouse import Listener
-import time
+from pynput import mouse
+import tkinter as tk
 
-# Replace with your identified serial port
-ser = serial.Serial('/dev/tty.usbmodem11401', 9600)  # Update this to your specific port
-last_time = time.time()
+# ser = serial.Serial('/dev/tty.usbmodem11401', 9600)  # Update this to your specific port
+
+mouse_x, mouse_y = 0, 0
+servo1_pos, servo2_pos = 90, 90  
 
 def on_move(x, y):
-    global last_time
-    current_time = time.time()
-    if current_time - last_time > 0.01:  # 100 ms debounce
-        if x > 500:
-            ser.write(b'D')
-        elif x < 300:
-            ser.write(b'A')
-        if y > 500:
-            ser.write(b'S')
-        elif y < 300:
-            ser.write(b'W')
-        last_time = current_time
+    global mouse_x, mouse_y
+    mouse_x, mouse_y = x, y
+    update_telemetry()
 
-def on_click(x, y, button, pressed):
-    pass
+def update_telemetry():
+    mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
+    servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, Servo2: {servo2_pos})")
 
-def on_scroll(x, y, dx, dy):
-    pass
-
-# Set up the mouse listener
-listener = Listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll)
-
-# Function to start the mouse listener
-def start_control():
+def start_tracking():
     listener.start()
+    activate_button.config(state="disabled")
+    deactivate_button.config(state="normal")
 
-# Create a simple GUI
-import tkinter as tk
+def stop_tracking():
+    listener.stop()
+    activate_button.config(state="normal")
+    deactivate_button.config(state="disabled")
+
+listener = mouse.Listener(on_move=on_move)
+
 root = tk.Tk()
 root.title("Robot Control")
+root.configure(bg='black')
 
-start_button = tk.Button(root, text="Start Control", command=start_control)
-start_button.pack(pady=20)
+activate_button = tk.Button(root, text="Activate", command=start_tracking, bg='green', fg='white')
+activate_button.grid(row=0, column=0, padx=10, pady=10, sticky='w')
+
+deactivate_button = tk.Button(root, text="Deactivate", command=stop_tracking, bg='red', fg='white')
+deactivate_button.grid(row=0, column=1, padx=10, pady=10, sticky='w')
+deactivate_button.config(state="disabled")
+
+mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg='white')
+mouse_pos_label.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky='w')
+
+servo_pos_label = tk.Label(root, text="Servo Positions: (Servo1: 90, Servo2: 90)", bg='black', fg='white')
+servo_pos_label.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky='w')
 
 root.mainloop()
