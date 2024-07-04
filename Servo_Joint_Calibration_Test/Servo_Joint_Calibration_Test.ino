@@ -30,7 +30,7 @@ void loop() {
 
   for (servo2Pos = servo2Up; servo2Pos <= servo2Down; servo2Pos += 1) {
     servo2.write(servo2Pos);
-    servo3Pos = map(servo2Pos, servo2Up, servo2Down, servo3Min, servo3Max);
+    servo3Pos = map(servo2Pos, serv/Users/braydentomlinson/Desktop/Code/Arduino/Arduino_robot/Robot_Control/Robot_Control.inoo2Up, servo2Down, servo3Min, servo3Max);
     servo3.write(servo3Pos);
     delay(5);
   }
