@@ -26,33 +26,21 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    char command = Serial.read();
-    switch (command) {
-      case 'W':
-        pos1 += 5;
-        if (pos1 > 180) pos1 = 180;
-        servo1.write(pos1);
-        break;
-      case 'S':
-        pos1 -= 5;
-        if (pos1 < 0) pos1 = 0;
-        servo1.write(pos1);
-        break;
-      case 'A':
-        pos2 += 5;
-        if (pos2 > 180) pos2 = 180;
-        servo2.write(pos2);
-        pos3 = map(pos2, servo2Up, servo2Down, servo3Min, servo3Max);
-        servo3.write(pos3);
-        break;
-      case 'D':
-        pos2 -= 5;
-        if (pos2 < 0) pos2 = 0;
-        servo2.write(pos2);
-        pos3 = map(pos2, servo2Down, servo2Up, servo3Max, servo3Min);
-        servo3.write(pos3);
-        break;
+  if (Serial.available() >= 6) { // Ensure there are enough bytes to read
+    char buffer[6];
+    Serial.readBytes(buffer, 6);
+
+    pos1 = buffer[0] | (buffer[1] << 8);
+    pos2 = buffer[2] | (buffer[3] << 8);
+    pos3 = buffer[4] | (buffer[5] << 8);
+
+    if (pos1 >= servo1Left && pos1 <= servo1Right) {
+      servo1.write(pos1);
+    }
+    if (pos2 >= servo2Up && pos2 <= servo2Down) {
+      servo2.write(pos2);
+      pos3 = map(pos2, servo2Up, servo2Down, servo3Min, servo3Max);
+      servo3.write(pos3);
     }
   }
 }
