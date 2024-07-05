@@ -57,18 +57,16 @@ def load_text_character_by_character(widget, text, index=0, delay=50):
 
 root = tk.Tk()
 root.title("Robot Control")
+root.geometry("1280x720")
 root.configure(bg='black')
 
-background_color = "#000000"
 text_color = "#00ff00"
 button_color = "#333333"
 border_color = "#555"
 font_style = ("Consolas", 12)
-root.configure(bg=background_color)
-print(ascii_art)
 
-title_label = tk.Label(root, font=("Courier New", 10), bg=background_color, fg=text_color, anchor='center', justify='center')
-title_label.pack(fill='x', padx=10, pady=10)
+title_label = tk.Label(root, font=("Courier New", 10), bg='black', fg=text_color, anchor='center', justify='center')
+title_label.grid(row=0, column=5, columnspan=3, padx=10, pady=10)
 
 activate_button = tk.Button(root, text="Activate", command=start_tracking, bg='green', fg='black')
 activate_button.grid(row=0, column=0, padx=10, pady=10, sticky='w')
@@ -82,5 +80,7 @@ mouse_pos_label.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky='w'
 
 servo_pos_label = tk.Label(root, text="Servo Positions: (Servo1: 90, Servo2: 90, Servo3: 90)", bg='black', fg='white')
 servo_pos_label.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky='w')
+
+root.after(1000, lambda: load_text_character_by_character(title_label, ascii_art, 0, 1))
 
 root.mainloop()
