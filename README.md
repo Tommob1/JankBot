@@ -20,4 +20,9 @@ VERSION 3 (MAY 2024):
 
 
 
-3rd servo motor joint for improved dexterity
+3rd servo motor joint for improved dexterity.
+
+
+VERSION 4 (JULY 2024):
+
+Streamlined electronics desgin. New mouse based control software.
