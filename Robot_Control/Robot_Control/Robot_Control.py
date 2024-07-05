@@ -2,8 +2,9 @@ import serial
 from pynput import mouse
 import tkinter as tk
 import struct
+from logo import ascii_art
 
-ser = serial.Serial('/dev/tty.usbmodem11401', 9600)
+#ser = serial.Serial('/dev/tty.usbmodem11401', 9600)
 mouse_x, mouse_y = 0, 0
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 listener = None
@@ -42,9 +43,32 @@ def stop_tracking():
     activate_button.config(state="normal")
     deactivate_button.config(state="disabled")
 
+def load_text_character_by_character(widget, text, index=0, delay=50):
+    if index < len(text):
+        if isinstance(widget, tk.Text):
+            widget.configure(state='normal')
+            widget.insert(tk.END, text[index])
+            widget.configure(state='disabled')
+        elif isinstance(widget, tk.Label):
+            current_text = widget.cget("text")
+            widget.configure(text=current_text + text[index])
+        widget.see(tk.END) if isinstance(widget, tk.Text) else None
+        widget.after(delay, lambda: load_text_character_by_character(widget, text, index + 1, delay))
+
 root = tk.Tk()
 root.title("Robot Control")
 root.configure(bg='black')
+
+background_color = "#000000"
+text_color = "#00ff00"
+button_color = "#333333"
+border_color = "#555"
+font_style = ("Consolas", 12)
+root.configure(bg=background_color)
+print(ascii_art)
+
+title_label = tk.Label(root, font=("Courier New", 10), bg=background_color, fg=text_color, anchor='center', justify='center')
+title_label.pack(fill='x', padx=10, pady=10)
 
 activate_button = tk.Button(root, text="Activate", command=start_tracking, bg='green', fg='black')
 activate_button.grid(row=0, column=0, padx=10, pady=10, sticky='w')
