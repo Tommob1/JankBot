@@ -62,24 +62,24 @@ root.configure(bg='black')
 
 text_color = "#00ff00"
 button_color = "#333333"
-border_color = "#555"
+border_color = "#555555"
 font_style = ("Consolas", 12)
 
 title_label = tk.Label(root, font=("Courier New", 10), bg='black', fg=text_color, anchor='center', justify='center')
-title_label.grid(row=0, column=5, columnspan=3, padx=10, pady=10)
+title_label.pack(padx=10, pady=10)
 
 activate_button = tk.Button(root, text="Activate", command=start_tracking, bg='green', fg='black')
-activate_button.grid(row=0, column=0, padx=10, pady=10, sticky='w')
+activate_button.pack(pady=10, padx=10)
 
 deactivate_button = tk.Button(root, text="Deactivate", command=stop_tracking, bg='red', fg='black')
-deactivate_button.grid(row=0, column=1, padx=10, pady=10, sticky='w')
+deactivate_button.pack(pady=10, padx=10)
 deactivate_button.config(state="disabled")
 
-mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg='white')
-mouse_pos_label.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky='w')
+mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg=text_color)
+mouse_pos_label.pack(pady=10)
 
-servo_pos_label = tk.Label(root, text="Servo Positions: (Servo1: 90, Servo2: 90, Servo3: 90)", bg='black', fg='white')
-servo_pos_label.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky='w')
+servo_pos_label = tk.Label(root, text="Servo Positions: (Servo1: 90, Servo2: 90, Servo3: 90)", bg='black', fg=text_color)
+servo_pos_label.pack(pady=10)
 
 root.after(1000, lambda: load_text_character_by_character(title_label, ascii_art, 0, 1))
 
