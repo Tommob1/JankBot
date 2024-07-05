@@ -26,7 +26,8 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.available() >= 6) { // Ensure there are enough bytes to read
+  if (Serial.available() >= 6) 
+  {
     char buffer[6];
     Serial.readBytes(buffer, 6);
 
