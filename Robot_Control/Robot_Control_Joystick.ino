@@ -36,14 +36,16 @@ unsigned long debounceDelay = 50;
 
 int speedFactor = 5;
 
-void setup() {
+void setup() 
+{
   pinMode(buttonPin, INPUT);
   servo1.attach(11);
   servo2.attach(10);
   servo3.attach(9);
   Serial.begin(9600);
 
-  for (int i = 0; i < numReadings; i++) {
+  for (int i = 0; i < numReadings; i++) 
+  {
     readings[i] = 0;
   }
 
@@ -52,18 +54,23 @@ void setup() {
   currentServo3Pos = servo3.read();
 }
 
-void loop() {
+void loop() 
+{
   int buttonReading = digitalRead(buttonPin);
 
-  if (buttonReading != lastButtonState) {
+  if (buttonReading != lastButtonState) 
+  {
     lastDebounceTime = millis();
   }
 
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (buttonReading != currentButtonState) {
+  if ((millis() - lastDebounceTime) > debounceDelay) 
+  {
+    if (buttonReading != currentButtonState) 
+    {
       currentButtonState = buttonReading;
 
-      if (currentButtonState == HIGH) {
+      if (currentButtonState == HIGH) 
+      {
         servosActive = !servosActive;
       }
     }
@@ -71,7 +78,8 @@ void loop() {
 
   lastButtonState = buttonReading;
 
-  if (servosActive) {
+  if (servosActive) 
+  {
     joyX = analogRead(A0);
     joyY = analogRead(A1);
 
@@ -82,7 +90,8 @@ void loop() {
     total = total + readings[readIndex];
     readIndex = readIndex + 1;
 
-    if (readIndex >= numReadings) {
+    if (readIndex >= numReadings) 
+    {
       readIndex = 0;
     }
 
@@ -91,9 +100,12 @@ void loop() {
     targetServo1Pos = map(joyX, 200, 823, servo1Max, servo1Min);
     targetServo2Pos = map(joyY, 200, 823, servo2Min, servo2Max);
 
-    if (targetServo2Pos < 90) {
+    if (targetServo2Pos < 90) 
+    {
       targetServo3Pos = map(targetServo2Pos, servo2Min, 90, servo3Min, (servo3Min + servo3Max) / 2);
-    } else {
+    } 
+    else 
+    {
       targetServo3Pos = map(targetServo2Pos, 90, servo2Max, (servo3Min + servo3Max) / 2, servo3Max);
     }
 
@@ -116,15 +128,20 @@ void loop() {
   delay(15);
 }
 
-int moveServo(int currentPos, int targetPos, int speed) {
-  if (currentPos < targetPos) {
+int moveServo(int currentPos, int targetPos, int speed) 
+{
+  if (currentPos < targetPos) 
+  {
     currentPos += speed;
-    if (currentPos > targetPos) {
+    if (currentPos > targetPos) 
+    {
       currentPos = targetPos;
     }
-  } else if (currentPos > targetPos) {
+  } else if (currentPos > targetPos) 
+  {
     currentPos -= speed;
-    if (currentPos < targetPos) {
+    if (currentPos < targetPos) 
+    {
       currentPos = targetPos;
     }
   }
