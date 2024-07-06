@@ -4,7 +4,7 @@ import tkinter as tk
 import struct
 from logo import ascii_art
 
-#ser = serial.Serial('/dev/tty.usbmodem11401', 9600)
+ser = serial.Serial('/dev/tty.usbmodem11401', 9600)
 mouse_x, mouse_y = 0, 0
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 listener = None
