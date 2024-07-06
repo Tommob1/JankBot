@@ -1,10 +1,31 @@
 import serial
+import serial.tools.list_ports
 from pynput import mouse
 import tkinter as tk
 import struct
 from logo import ascii_art
 
-ser = serial.Serial('/dev/tty.usbmodem11401', 9600)
+def find_arduino_port():
+    ports = list(serial.tools.list_ports.comports())
+    for port in ports:
+        print(f"Checking port: {port}")
+        if 'Arduino' in port.description or 'usbmodem' in port.device:
+            print(f"Found Arduino on port: {port.device}")
+            return port.device
+    return None
+
+def initialize_serial_connection():
+    port = find_arduino_port()
+    if port:
+        try:
+            return serial.Serial(port, 9600)
+        except Exception as e:
+            print(f"Error connecting to {port}: {e}")
+    else:
+        print("Arduino not found")
+    return None
+
+ser = initialize_serial_connection()
 mouse_x, mouse_y = 0, 0
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 listener = None
@@ -19,8 +40,16 @@ def on_move(x, y):
     send_command()
 
 def send_command():
+    global ser
     data = struct.pack('HHH', servo1_pos, servo2_pos, servo3_pos)
-    ser.write(data)
+    if ser:
+        try:
+            ser.write(data)
+        except serial.SerialException:
+            print("Serial connection lost. Reconnecting...")
+            ser = initialize_serial_connection()
+    else:
+        print("Serial connection not initialized.")
 
 def map_value(x, in_min, in_max, out_min, out_max):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
