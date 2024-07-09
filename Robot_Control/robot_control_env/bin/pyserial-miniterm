@@ -1,4 +1,4 @@
-#!/Users/braydentomlinson/Desktop/Code/Arduino/Arduino_robot/Robot_Control/Robot_Control/robot_control_env/bin/python3.12
+#!/Users/braydentomlinson/Desktop/Code/Arduino/Arduino_robot/Robot_Control/robot_control_env/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
