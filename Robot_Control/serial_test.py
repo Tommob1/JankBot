@@ -34,7 +34,7 @@ last_update_time = time.time()
 def on_move(x, y):
     global mouse_x, mouse_y, servo1_pos, servo2_pos, servo3_pos, last_update_time
     current_time = time.time()
-    if current_time - last_update_time > 0.1:  # Update every 100ms
+    if current_time - last_update_time > 0.1:
         mouse_x, mouse_y = x, y
         servo1_pos = int(map_value(mouse_x, 0, 1920, 10, 170))
         servo2_pos = int(map_value(mouse_y, 0, 1080, 10, 170))
@@ -68,10 +68,9 @@ def start_mouse_listener():
 
 if ser:
     print("Connected to Arduino")
-    time.sleep(2)  # Wait for Arduino to reset
-    ser.write(b'\x5A\x00\x5A\x00\x5A\x00')  # Example data to initialize
+    time.sleep(2)
+    ser.write(b'\x5A\x00\x5A\x00\x5A\x00')
 
-    # Run the mouse listener in a separate thread
     listener_thread = threading.Thread(target=start_mouse_listener)
     listener_thread.start()
 else:
