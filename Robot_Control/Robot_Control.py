@@ -102,6 +102,12 @@ title_label.pack(padx=10, pady=10)
 activate_button = tk.Button(root, text="Activate", command=start_tracking, bg='green', fg='black')
 activate_button.pack(pady=10, padx=10)
 
+hand_tracker_button = tk.Button(root, text="Activate Hand Tracker", command=handtracker.start_hand_tracker_thread, bg='blue', fg='black')
+hand_tracker_button.pack(pady=10, padx=10)
+
+stop_hand_tracker_button = tk.Button(root, text="Deactivate Hand Tracker", command=handtracker.stop_hand_tracker, bg='orange', fg='black')
+stop_hand_tracker_button.pack(pady=10, padx=10)
+
 deactivate_button = tk.Button(root, text="Deactivate", command=stop_tracking, bg='red', fg='black')
 deactivate_button.pack(pady=10, padx=10)
 deactivate_button.config(state="disabled")
