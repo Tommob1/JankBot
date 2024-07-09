@@ -11,6 +11,7 @@ tracking = False
 
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None  # Placeholder for the serial object
+thread = None
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -27,11 +28,12 @@ def initialize_serial_connection():
     if port:
         try:
             ser = serial.Serial(port, 9600)
+            print(f"Connected to Arduino on port: {port}")
         except Exception as e:
             print(f"Error connecting to {port}: {e}")
     else:
         print("Arduino not found")
-    return None
+    return ser
 
 initialize_serial_connection()
 
@@ -52,13 +54,18 @@ def send_command():
 
 def start_hand_tracker():
     global tracking, servo1_pos, servo2_pos, servo3_pos
-    tracking = True
     cap = cv2.VideoCapture(0)
     hands = mp_hands.Hands()
-    
+
+    if not cap.isOpened():
+        print("Error: Could not open webcam.")
+        return
+
+    tracking = True
     while tracking:
         ret, frame = cap.read()
         if not ret:
+            print("Error: Could not read frame from webcam.")
             break
         
         frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
@@ -71,6 +78,7 @@ def start_hand_tracker():
                                           mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=5, circle_radius=5),
                                           mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
                 
+                # Map hand position to robot control
                 hand_pos_x = hand_landmarks.landmark[0].x * frame.shape[1]
                 hand_pos_y = hand_landmarks.landmark[0].y * frame.shape[0]
                 servo1_pos = int(map_value(hand_pos_x, 0, frame.shape[1], 10, 170))
@@ -86,9 +94,16 @@ def start_hand_tracker():
     cv2.destroyAllWindows()
 
 def stop_hand_tracker():
-    global tracking
+    global tracking, thread
     tracking = False
+    if thread:
+        thread.join()
+    print("Hand tracker stopped.")
 
 def start_hand_tracker_thread():
+    global thread
+    if thread and thread.is_alive():
+        print("Hand tracker is already running.")
+        return
     thread = threading.Thread(target=start_hand_tracker)
     thread.start()
