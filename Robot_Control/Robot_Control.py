@@ -2,8 +2,9 @@ import serial
 import serial.tools.list_ports
 from pynput import mouse
 import tkinter as tk
-from customtkinter import *
 import struct
+import handtracker
+from customtkinter import *
 from logo import ascii_art
 
 def find_arduino_port():
