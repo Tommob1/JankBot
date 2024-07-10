@@ -6,7 +6,7 @@ import serial.tools.list_ports
 import tkinter as tk
 from customtkinter import *
 from logo import ascii_art
-import handtracker
+import Hand_Tracker
 from pynput import mouse
 
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
@@ -110,10 +110,10 @@ deactivate_mouse_button = tk.Button(root, text="Deactivate Mouse Tracking", comm
 deactivate_mouse_button.pack(pady=10, padx=10)
 deactivate_mouse_button.config(state="disabled")
 
-activate_hand_tracker_button = tk.Button(root, text="Activate Hand Tracker", command=handtracker.start_hand_tracker_thread, bg='blue', fg='black')
+activate_hand_tracker_button = tk.Button(root, text="Activate Hand Tracker", command=Hand_Tracker.start_hand_tracker_thread, bg='blue', fg='black')
 activate_hand_tracker_button.pack(pady=10, padx=10)
 
-deactivate_hand_tracker_button = tk.Button(root, text="Deactivate Hand Tracker", command=handtracker.stop_hand_tracker, bg='orange', fg='black')
+deactivate_hand_tracker_button = tk.Button(root, text="Deactivate Hand Tracker", command=Hand_Tracker.stop_hand_tracker, bg='orange', fg='black')
 deactivate_hand_tracker_button.pack(pady=10, padx=10)
 
 mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg=text_color)
