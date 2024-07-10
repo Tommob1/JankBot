@@ -12,6 +12,7 @@ tracking = False
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None  # Placeholder for the serial object
 thread = None
+lock = threading.Lock()  # Global lock for thread safety
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -54,44 +55,50 @@ def send_command():
 
 def start_hand_tracker():
     global tracking, servo1_pos, servo2_pos, servo3_pos
-    cap = cv2.VideoCapture(0)
-    hands = mp_hands.Hands()
+    cap = None
+    try:
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            print("Error: Could not open webcam.")
+            return
 
-    if not cap.isOpened():
-        print("Error: Could not open webcam.")
-        return
+        hands = mp_hands.Hands()
+        tracking = True
 
-    tracking = True
-    while tracking:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Could not read frame from webcam.")
-            break
-        
-        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-        results = hands.process(frame)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                                          mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=5, circle_radius=5),
-                                          mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
-                
-                # Map hand position to robot control
-                hand_pos_x = hand_landmarks.landmark[0].x * frame.shape[1]
-                hand_pos_y = hand_landmarks.landmark[0].y * frame.shape[0]
-                servo1_pos = int(map_value(hand_pos_x, 0, frame.shape[1], 10, 170))
-                servo2_pos = int(map_value(hand_pos_y, 0, frame.shape[0], 10, 170))
-                servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
-                send_command()
-        
-        cv2.imshow('Handtracker', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    
-    cap.release()
-    cv2.destroyAllWindows()
+        while tracking:
+            ret, frame = cap.read()
+            if not ret:
+                print("Error: Could not read frame from webcam.")
+                break
+
+            frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+            results = hands.process(frame)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                                              mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=5, circle_radius=5),
+                                              mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
+
+                    # Map hand position to robot control
+                    hand_pos_x = hand_landmarks.landmark[0].x * frame.shape[1]
+                    hand_pos_y = hand_landmarks.landmark[0].y * frame.shape[0]
+                    servo1_pos = int(map_value(hand_pos_x, 0, frame.shape[1], 10, 170))
+                    servo2_pos = int(map_value(hand_pos_y, 0, frame.shape[0], 10, 170))
+                    servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
+                    send_command()
+
+            with lock:
+                cv2.imshow('Handtracker', frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+    except Exception as e:
+        print(f"Error in hand tracker: {e}")
+    finally:
+        if cap:
+            cap.release()
+        cv2.destroyAllWindows()
 
 def stop_hand_tracker():
     global tracking, thread
