@@ -83,7 +83,9 @@ def stop_mouse_tracking():
 def start_hand_tracking():
     global tracking_hand
     tracking_hand = True
-    root.after(10, hand_tracking_loop)
+    Hand_Tracker.start_hand_tracker()
+    activate_hand_button.config(state="disabled")
+    deactivate_hand_button.config(state="normal")
 
 def stop_hand_tracking():
     global tracking_hand
@@ -91,11 +93,6 @@ def stop_hand_tracking():
     Hand_Tracker.stop_hand_tracker()
     activate_hand_button.config(state="normal")
     deactivate_hand_button.config(state="disabled")
-
-def hand_tracking_loop():
-    if tracking_hand:
-        Hand_Tracker.start_hand_tracker()
-        root.after(10, hand_tracking_loop)
 
 def load_text_character_by_character(widget, text, index=0, delay=50):
     if index < len(text):
