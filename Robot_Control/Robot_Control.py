@@ -6,21 +6,18 @@ import serial.tools.list_ports
 import tkinter as tk
 from customtkinter import *
 from logo import ascii_art
-
-mp_drawing = mp.solutions.drawing_utils
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands()
-tracking = False
-cap = None
+import handtracker
+from pynput import mouse
 
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
+mouse_x, mouse_y = 0, 0
+listener = None
+tracking_mouse = False
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
     for port in ports:
-        print(f"Checking port: {port}")
         if 'Arduino' in port.description or 'usbmodem' in port.device:
-            print(f"Found Arduino on port: {port.device}")
             return port.device
     return None
 
@@ -30,12 +27,9 @@ def initialize_serial_connection():
     if port:
         try:
             ser = serial.Serial(port, 9600)
-            print(f"Connected to Arduino on port: {port}")
         except Exception as e:
-            print(f"Error connecting to {port}: {e}")
             ser = None
     else:
-        print("Arduino not found")
         ser = None
 
 initialize_serial_connection()
@@ -50,60 +44,39 @@ def send_command():
         try:
             ser.write(data)
         except serial.SerialException:
-            print("Serial connection lost. Reconnecting...")
             initialize_serial_connection()
     else:
-        print("Serial connection not initialized.")
+        initialize_serial_connection()
 
-def process_hand_tracking():
-    global servo1_pos, servo2_pos, servo3_pos, cap
-    if tracking:
-        if cap is None:
-            cap = cv2.VideoCapture(0)
-            if not cap.isOpened():
-                print("Error: Could not open webcam.")
-                cap = None
-                return
+def on_move(x, y):
+    global mouse_x, mouse_y, servo1_pos, servo2_pos, servo3_pos
+    if tracking_mouse:
+        mouse_x, mouse_y = x, y
+        servo1_pos = int(map_value(mouse_x, 0, 1920, 10, 170))
+        servo2_pos = int(map_value(mouse_y, 0, 1080, 10, 170))
+        servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
+        update_telemetry()
+        send_command()
 
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Could not read frame from webcam.")
-            return
-        
-        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-        results = hands.process(frame)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+def update_telemetry():
+    mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
+    servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, Servo2: {servo2_pos}, Servo3: {servo3_pos})")
 
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                                          mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=5, circle_radius=5),
-                                          mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
+def start_mouse_tracking():
+    global listener, tracking_mouse
+    tracking_mouse = True
+    listener = mouse.Listener(on_move=on_move)
+    listener.start()
+    activate_mouse_button.config(state="disabled")
+    deactivate_mouse_button.config(state="normal")
 
-                hand_pos_x = hand_landmarks.landmark[0].x * frame.shape[1]
-                hand_pos_y = hand_landmarks.landmark[0].y * frame.shape[0]
-                servo1_pos = int(map_value(hand_pos_x, 0, frame.shape[1], 10, 170))
-                servo2_pos = int(map_value(hand_pos_y, 0, frame.shape[0], 10, 170))
-                servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
-                send_command()
-
-        cv2.imshow('Handtracker', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_hand_tracker()
-    root.after(10, process_hand_tracking)
-
-def start_hand_tracker():
-    global tracking
-    tracking = True
-    process_hand_tracking()
-
-def stop_hand_tracker():
-    global tracking, cap
-    tracking = False
-    if cap:
-        cap.release()
-        cap = None
-    cv2.destroyAllWindows()
+def stop_mouse_tracking():
+    global listener, tracking_mouse
+    tracking_mouse = False
+    if listener:
+        listener.stop()
+    activate_mouse_button.config(state="normal")
+    deactivate_mouse_button.config(state="disabled")
 
 def load_text_character_by_character(widget, text, index=0, delay=50):
     if index < len(text):
@@ -130,11 +103,18 @@ font_style = ("Consolas", 12)
 title_label = tk.Label(root, font=("Courier New", 10), bg='black', fg=text_color, anchor='center', justify='center')
 title_label.pack(padx=10, pady=10)
 
-activate_button = tk.Button(root, text="Activate Mouse Tracking", command=start_hand_tracker, bg='green', fg='black')
-activate_button.pack(pady=10, padx=10)
+activate_mouse_button = tk.Button(root, text="Activate Mouse Tracking", command=start_mouse_tracking, bg='green', fg='black')
+activate_mouse_button.pack(pady=10, padx=10)
 
-deactivate_button = tk.Button(root, text="Deactivate Mouse Tracking", command=stop_hand_tracker, bg='red', fg='black')
-deactivate_button.pack(pady=10, padx=10)
+deactivate_mouse_button = tk.Button(root, text="Deactivate Mouse Tracking", command=stop_mouse_tracking, bg='red', fg='black')
+deactivate_mouse_button.pack(pady=10, padx=10)
+deactivate_mouse_button.config(state="disabled")
+
+activate_hand_tracker_button = tk.Button(root, text="Activate Hand Tracker", command=handtracker.start_hand_tracker_thread, bg='blue', fg='black')
+activate_hand_tracker_button.pack(pady=10, padx=10)
+
+deactivate_hand_tracker_button = tk.Button(root, text="Deactivate Hand Tracker", command=handtracker.stop_hand_tracker, bg='orange', fg='black')
+deactivate_hand_tracker_button.pack(pady=10, padx=10)
 
 mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg=text_color)
 mouse_pos_label.pack(pady=10)
