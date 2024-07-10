@@ -1,4 +1,3 @@
-import cv2
 import struct
 import serial
 import serial.tools.list_ports
@@ -8,14 +7,12 @@ from logo import ascii_art
 import Hand_Tracker
 from pynput import mouse
 
-# Global variables
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 mouse_x, mouse_y = 0, 0
 listener = None
 tracking_mouse = False
 tracking_hand = False
 
-# Initialize serial connection
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
     for port in ports:
