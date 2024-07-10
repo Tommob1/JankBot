@@ -1,5 +1,4 @@
 import cv2
-import mediapipe as mp
 import struct
 import serial
 import serial.tools.list_ports
@@ -9,11 +8,14 @@ from logo import ascii_art
 import Hand_Tracker
 from pynput import mouse
 
+# Global variables
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 mouse_x, mouse_y = 0, 0
 listener = None
 tracking_mouse = False
+tracking_hand = False
 
+# Initialize serial connection
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
     for port in ports:
@@ -60,7 +62,7 @@ def on_move(x, y):
 
 def update_telemetry():
     mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
-    servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, Servo2: {servo2_pos}, Servo3: {servo3_pos})")
+    servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, {servo2_pos}, {servo3_pos})")
 
 def start_mouse_tracking():
     global listener, tracking_mouse
@@ -77,6 +79,23 @@ def stop_mouse_tracking():
         listener.stop()
     activate_mouse_button.config(state="normal")
     deactivate_mouse_button.config(state="disabled")
+
+def start_hand_tracking():
+    global tracking_hand
+    tracking_hand = True
+    root.after(10, hand_tracking_loop)
+
+def stop_hand_tracking():
+    global tracking_hand
+    tracking_hand = False
+    Hand_Tracker.stop_hand_tracker()
+    activate_hand_button.config(state="normal")
+    deactivate_hand_button.config(state="disabled")
+
+def hand_tracking_loop():
+    if tracking_hand:
+        Hand_Tracker.start_hand_tracker()
+        root.after(10, hand_tracking_loop)
 
 def load_text_character_by_character(widget, text, index=0, delay=50):
     if index < len(text):
@@ -110,11 +129,12 @@ deactivate_mouse_button = tk.Button(root, text="Deactivate Mouse Tracking", comm
 deactivate_mouse_button.pack(pady=10, padx=10)
 deactivate_mouse_button.config(state="disabled")
 
-activate_hand_tracker_button = tk.Button(root, text="Activate Hand Tracker", command=Hand_Tracker.start_hand_tracker_thread, bg='blue', fg='black')
-activate_hand_tracker_button.pack(pady=10, padx=10)
+activate_hand_button = tk.Button(root, text="Activate Hand Tracking", command=start_hand_tracking, bg='blue', fg='black')
+activate_hand_button.pack(pady=10, padx=10)
 
-deactivate_hand_tracker_button = tk.Button(root, text="Deactivate Hand Tracker", command=Hand_Tracker.stop_hand_tracker, bg='orange', fg='black')
-deactivate_hand_tracker_button.pack(pady=10, padx=10)
+deactivate_hand_button = tk.Button(root, text="Deactivate Hand Tracking", command=stop_hand_tracking, bg='orange', fg='black')
+deactivate_hand_button.pack(pady=10, padx=10)
+deactivate_hand_button.config(state="disabled")
 
 mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg=text_color)
 mouse_pos_label.pack(pady=10)
