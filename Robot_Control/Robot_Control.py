@@ -1,11 +1,19 @@
+import cv2
+import mediapipe as mp
+import struct
 import serial
 import serial.tools.list_ports
-from pynput import mouse
 import tkinter as tk
-import struct
-import handtracker
 from customtkinter import *
 from logo import ascii_art
+
+mp_drawing = mp.solutions.drawing_utils
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands()
+tracking = False
+cap = None
+
+servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -17,62 +25,85 @@ def find_arduino_port():
     return None
 
 def initialize_serial_connection():
+    global ser
     port = find_arduino_port()
     if port:
         try:
-            return serial.Serial(port, 9600)
+            ser = serial.Serial(port, 9600)
+            print(f"Connected to Arduino on port: {port}")
         except Exception as e:
             print(f"Error connecting to {port}: {e}")
+            ser = None
     else:
         print("Arduino not found")
-    return None
+        ser = None
 
-ser = initialize_serial_connection()
-mouse_x, mouse_y = 0, 0
-servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
-listener = None
+initialize_serial_connection()
 
-def on_move(x, y):
-    global mouse_x, mouse_y, servo1_pos, servo2_pos, servo3_pos
-    mouse_x, mouse_y = x, y
-    servo1_pos = int(map_value(mouse_x, 0, 1920, 10, 170))
-    servo2_pos = int(map_value(mouse_y, 0, 1080, 10, 170))
-    servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
-    update_telemetry()
-    send_command()
+def map_value(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 def send_command():
-    global ser
+    global ser, servo1_pos, servo2_pos, servo3_pos
     data = struct.pack('HHH', servo1_pos, servo2_pos, servo3_pos)
     if ser:
         try:
             ser.write(data)
         except serial.SerialException:
             print("Serial connection lost. Reconnecting...")
-            ser = initialize_serial_connection()
+            initialize_serial_connection()
     else:
         print("Serial connection not initialized.")
 
-def map_value(x, in_min, in_max, out_min, out_max):
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+def process_hand_tracking():
+    global servo1_pos, servo2_pos, servo3_pos, cap
+    if tracking:
+        if cap is None:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("Error: Could not open webcam.")
+                cap = None
+                return
 
-def update_telemetry():
-    mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
-    servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, Servo2: {servo2_pos}, Servo3: {servo3_pos})")
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: Could not read frame from webcam.")
+            return
+        
+        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+        results = hands.process(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-def start_tracking():
-    global listener
-    listener = mouse.Listener(on_move=on_move)
-    listener.start()
-    activate_button.config(state="disabled")
-    deactivate_button.config(state="normal")
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
+                                          mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=5, circle_radius=5),
+                                          mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
 
-def stop_tracking():
-    global listener
-    if listener:
-        listener.stop()
-    activate_button.config(state="normal")
-    deactivate_button.config(state="disabled")
+                hand_pos_x = hand_landmarks.landmark[0].x * frame.shape[1]
+                hand_pos_y = hand_landmarks.landmark[0].y * frame.shape[0]
+                servo1_pos = int(map_value(hand_pos_x, 0, frame.shape[1], 10, 170))
+                servo2_pos = int(map_value(hand_pos_y, 0, frame.shape[0], 10, 170))
+                servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
+                send_command()
+
+        cv2.imshow('Handtracker', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            stop_hand_tracker()
+    root.after(10, process_hand_tracking)
+
+def start_hand_tracker():
+    global tracking
+    tracking = True
+    process_hand_tracking()
+
+def stop_hand_tracker():
+    global tracking, cap
+    tracking = False
+    if cap:
+        cap.release()
+        cap = None
+    cv2.destroyAllWindows()
 
 def load_text_character_by_character(widget, text, index=0, delay=50):
     if index < len(text):
@@ -99,18 +130,11 @@ font_style = ("Consolas", 12)
 title_label = tk.Label(root, font=("Courier New", 10), bg='black', fg=text_color, anchor='center', justify='center')
 title_label.pack(padx=10, pady=10)
 
-activate_button = tk.Button(root, text="Activate", command=start_tracking, bg='green', fg='black')
+activate_button = tk.Button(root, text="Activate Mouse Tracking", command=start_hand_tracker, bg='green', fg='black')
 activate_button.pack(pady=10, padx=10)
 
-hand_tracker_button = tk.Button(root, text="Activate Hand Tracker", command=handtracker.start_hand_tracker_thread, bg='blue', fg='black')
-hand_tracker_button.pack(pady=10, padx=10)
-
-stop_hand_tracker_button = tk.Button(root, text="Deactivate Hand Tracker", command=handtracker.stop_hand_tracker, bg='orange', fg='black')
-stop_hand_tracker_button.pack(pady=10, padx=10)
-
-deactivate_button = tk.Button(root, text="Deactivate", command=stop_tracking, bg='red', fg='black')
+deactivate_button = tk.Button(root, text="Deactivate Mouse Tracking", command=stop_hand_tracker, bg='red', fg='black')
 deactivate_button.pack(pady=10, padx=10)
-deactivate_button.config(state="disabled")
 
 mouse_pos_label = tk.Label(root, text="Mouse Position: (0, 0)", bg='black', fg=text_color)
 mouse_pos_label.pack(pady=10)
