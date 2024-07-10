@@ -3,7 +3,6 @@ import mediapipe as mp
 import struct
 import serial
 import serial.tools.list_ports
-import threading
 
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
@@ -11,8 +10,6 @@ hands = mp_hands.Hands()
 cap = None
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None
-thread = None
-tracking = False
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -49,7 +46,7 @@ def send_command():
         initialize_serial_connection()
 
 def start_hand_tracker():
-    global cap, servo1_pos, servo2_pos, servo3_pos, tracking
+    global cap, servo1_pos, servo2_pos, servo3_pos
     if cap is None:
         cap = cv2.VideoCapture(0)
         if not cap.isOpened():
@@ -57,8 +54,7 @@ def start_hand_tracker():
             cap = None
             return
 
-    tracking = True
-    while tracking:
+    while True:
         ret, frame = cap.read()
         if not ret:
             print("Error: Could not read frame from webcam.")
@@ -88,12 +84,8 @@ def start_hand_tracker():
     cv2.destroyAllWindows()
 
 def stop_hand_tracker():
-    global tracking
-    tracking = False
-
-def start_hand_tracker_thread():
-    global thread
-    if thread and thread.is_alive():
-        return
-    thread = threading.Thread(target=start_hand_tracker)
-    thread.start()
+    global cap
+    if cap:
+        cap.release()
+        cap = None
+    cv2.destroyAllWindows()
