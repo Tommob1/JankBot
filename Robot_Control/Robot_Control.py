@@ -36,7 +36,6 @@ def map_value(x, in_min, in_max, out_min, out_max):
 
 def send_command():
     global ser, servo1_pos, servo2_pos, servo3_pos
-    # Ensure servo positions are within valid range
     servo1_pos = max(0, min(servo1_pos, 180))
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
