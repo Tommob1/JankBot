@@ -5,12 +5,9 @@ import serial
 import serial.tools.list_ports
 import struct
 
-# Mediapipe and OpenCV setup
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
-
-# Servo and serial setup
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None
 
@@ -62,7 +59,6 @@ def map_value(x, in_min, in_max, out_min, out_max):
 
 def send_command():
     global ser, servo1_pos, servo2_pos, servo3_pos
-    # Ensure servo positions are within valid range
     servo1_pos = max(0, min(servo1_pos, 180))
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
@@ -98,7 +94,7 @@ def start_hand_tracker():
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = hands.process(image_rgb)
 
-        image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)  # Convert back to BGR for OpenCV
+        image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
         hand_landmarks_list = results.multi_hand_landmarks if results.multi_hand_landmarks else []
 
         if len(hand_landmarks_list) == 2:
