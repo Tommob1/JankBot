@@ -1,9 +1,9 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-import struct
 import serial
 import serial.tools.list_ports
+import struct
 
 # Mediapipe and OpenCV setup
 mp_drawing = mp.solutions.drawing_utils
@@ -13,6 +13,27 @@ hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7
 # Servo and serial setup
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None
+
+def is_fist(landmarks):
+    wrist = landmarks[mp_hands.HandLandmark.WRIST]
+    thumb_tip = landmarks[mp_hands.HandLandmark.THUMB_TIP]
+    index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+    middle_tip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+    ring_tip = landmarks[mp_hands.HandLandmark.RING_FINGER_TIP]
+    pinky_tip = landmarks[mp_hands.HandLandmark.PINKY_TIP]
+
+    def distance(point1, point2):
+        return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
+
+    d_thumb = distance(wrist, thumb_tip)
+    d_index = distance(wrist, index_tip)
+    d_middle = distance(wrist, middle_tip)
+    d_ring = distance(wrist, ring_tip)
+    d_pinky = distance(wrist, pinky_tip)
+
+    if d_thumb < 0.2 and d_index < 0.2 and d_middle < 0.2 and d_ring < 0.2 and d_pinky < 0.2:
+        return True
+    return False
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -55,27 +76,6 @@ def send_command():
     else:
         print("Serial connection not initialized. Reconnecting...")
         initialize_serial_connection()
-
-def is_fist(landmarks):
-    wrist = landmarks[mp_hands.HandLandmark.WRIST]
-    thumb_tip = landmarks[mp_hands.HandLandmark.THUMB_TIP]
-    index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-    middle_tip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-    ring_tip = landmarks[mp_hands.HandLandmark.RING_FINGER_TIP]
-    pinky_tip = landmarks[mp_hands.HandLandmark.PINKY_TIP]
-
-    def distance(point1, point2):
-        return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
-
-    d_thumb = distance(wrist, thumb_tip)
-    d_index = distance(wrist, index_tip)
-    d_middle = distance(wrist, middle_tip)
-    d_ring = distance(wrist, ring_tip)
-    d_pinky = distance(wrist, pinky_tip)
-
-    if d_thumb < 0.2 and d_index < 0.2 and d_middle < 0.2 and d_ring < 0.2 and d_pinky < 0.2:
-        return True
-    return False
 
 def start_hand_tracker():
     global cap, servo1_pos, servo2_pos, servo3_pos
