@@ -1,65 +1,11 @@
-import struct
-import serial
-import serial.tools.list_ports
 import tkinter as tk
 from customtkinter import *
 from logo import ascii_art
 import Hand_Tracker
 from pynput import mouse
 
-servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
-mouse_x, mouse_y = 0, 0
-listener = None
 tracking_mouse = False
 tracking_hand = False
-
-def find_arduino_port():
-    ports = list(serial.tools.list_ports.comports())
-    for port in ports:
-        if 'Arduino' in port.description or 'usbmodem' in port.device:
-            return port.device
-    return None
-
-def initialize_serial_connection():
-    global ser
-    port = find_arduino_port()
-    if port:
-        try:
-            ser = serial.Serial(port, 9600)
-        except Exception as e:
-            ser = None
-    else:
-        ser = None
-
-initialize_serial_connection()
-
-def map_value(x, in_min, in_max, out_min, out_max):
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-def send_command():
-    global ser, servo1_pos, servo2_pos, servo3_pos
-    data = struct.pack('HHH', servo1_pos, servo2_pos, servo3_pos)
-    if ser:
-        try:
-            ser.write(data)
-        except serial.SerialException:
-            initialize_serial_connection()
-    else:
-        initialize_serial_connection()
-
-def on_move(x, y):
-    global mouse_x, mouse_y, servo1_pos, servo2_pos, servo3_pos
-    if tracking_mouse:
-        mouse_x, mouse_y = x, y
-        servo1_pos = int(map_value(mouse_x, 0, 1920, 10, 170))
-        servo2_pos = int(map_value(mouse_y, 0, 1080, 10, 170))
-        servo3_pos = int(map_value(servo2_pos, 10, 170, 10, 170))
-        update_telemetry()
-        send_command()
-
-def update_telemetry():
-    mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
-    servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, {servo2_pos}, {servo3_pos})")
 
 def start_mouse_tracking():
     global listener, tracking_mouse
