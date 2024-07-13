@@ -23,3 +23,7 @@ Streamlined electronics desgin. New mouse based control software.
 Version 4.5 (JULY 2024):
 
 Added hand tracking to control robot
+
+Version 5 (JULY 2024):
+
+Improved robot body aesthetics, replaced rubber bands/ductape with electrical tape and wire, mapped hand angle control to servo1, added embedded LCD to display hand tracking telemetry.
