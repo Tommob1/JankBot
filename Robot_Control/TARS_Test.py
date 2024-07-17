@@ -4,18 +4,12 @@ import tkinter as tk
 import pygame
 from subprocess import call, CalledProcessError
 
-# Initialize pygame mixer for playing mp3 files
 pygame.mixer.init()
 
-# Path to Arduino CLI
-ARDUINO_CLI_PATH = "arduino-cli"  # Ensure arduino-cli is in your PATH or provide the full path
-
-# Path to the .ino file
+ARDUINO_CLI_PATH = "arduino-cli"
 INO_FILE_PATH = "Servo_Joint_Calibration_Test/Servo_Joint_Calibration_Test.ino"
-
-# Arduino board settings
 BOARD_TYPE = "arduino:avr:uno"
-PORT = "/dev/cu.usbmodem11401"  # Update this to your Arduino's port
+PORT = "/dev/cu.usbmodem11401"
 
 def check_arduino_cli():
     try:
@@ -29,11 +23,9 @@ def check_arduino_cli():
 
 def upload_sketch():
     try:
-        # Compile the .ino file
         compile_cmd = f"{ARDUINO_CLI_PATH} compile --fqbn {BOARD_TYPE} {INO_FILE_PATH}"
         call(compile_cmd.split())
 
-        # Upload the compiled sketch to the Arduino
         upload_cmd = f"{ARDUINO_CLI_PATH} upload -p {PORT} --fqbn {BOARD_TYPE} {INO_FILE_PATH}"
         call(upload_cmd.split())
 
@@ -51,21 +43,11 @@ def run_test():
     if not check_arduino_cli():
         return
 
-    # Play the first MP3 file immediately
     play_mp3("Servo_Joint_Calibration_Test/TARS/Test_Activation.mp3")
-
-    # Wait a short while before starting the upload
     time.sleep(1)
-
     upload_sketch()
-
-    # Play the second MP3 file after the upload is complete
     play_mp3("Servo_Joint_Calibration_Test/TARS/Moving_Arm.mp3")
-
-    # Wait for a moment to let the Arduino initialize
     time.sleep(12)
-
-    # Play the third MP3 file after a delay
     play_mp3("Servo_Joint_Calibration_Test/TARS/Test_Complete.mp3")
 
 def create_gui():
