@@ -9,7 +9,7 @@ pygame.mixer.init()
 ARDUINO_CLI_PATH = "arduino-cli"
 INO_FILE_PATH = "Servo_Joint_Calibration_Test/Servo_Joint_Calibration_Test.ino"
 BOARD_TYPE = "arduino:avr:uno"
-PORT = "/dev/cu.usbmodem11401"
+PORT = "/dev/cu.usbmodem1201"
 
 def check_arduino_cli():
     try:
