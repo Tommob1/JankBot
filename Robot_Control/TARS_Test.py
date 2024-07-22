@@ -5,7 +5,6 @@ import pygame
 from subprocess import call, CalledProcessError
 
 pygame.mixer.init()
-
 ARDUINO_CLI_PATH = "arduino-cli"
 INO_FILE_PATH = "Servo_Joint_Calibration_Test/Servo_Joint_Calibration_Test.ino"
 BOARD_TYPE = "arduino:avr:uno"
@@ -25,10 +24,8 @@ def upload_sketch():
     try:
         compile_cmd = f"{ARDUINO_CLI_PATH} compile --fqbn {BOARD_TYPE} {INO_FILE_PATH}"
         call(compile_cmd.split())
-
         upload_cmd = f"{ARDUINO_CLI_PATH} upload -p {PORT} --fqbn {BOARD_TYPE} {INO_FILE_PATH}"
         call(upload_cmd.split())
-
         print("Sketch uploaded successfully!")
     except CalledProcessError as e:
         print(f"Error: Failed to upload sketch: {e}")
