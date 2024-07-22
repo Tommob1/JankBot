@@ -50,7 +50,6 @@ def run_test():
 def create_gui():
     root = tk.Tk()
     root.title("Servo Test Interface")
-
     test_button = tk.Button(root, text="Run Servo Test", command=run_test)
     test_button.pack(pady=20)
 
