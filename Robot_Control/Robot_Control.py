@@ -64,7 +64,7 @@ def update_telemetry():
     mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
     servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, {servo2_pos}, {servo3_pos})")
 
-def start_mouse_tracking():
+def start_mouse_tracking()
     global listener, tracking_mouse
     tracking_mouse = True
     listener = mouse.Listener(on_move=on_move)
