@@ -23,49 +23,44 @@ void setup() {
 }
 
 void loop() {
-  // Test Servo 1
   for (servo1Pos = servo1Left; servo1Pos <= servo1Right; servo1Pos += 1) {
     servo1.write(servo1Pos);
-    delay(10);  // Adjust delay as needed for desired speed
+    delay(10);
   }
   for (servo1Pos = servo1Right; servo1Pos >= servo1Left; servo1Pos -= 1) {
     servo1.write(servo1Pos);
-    delay(10);  // Adjust delay as needed for desired speed
+    delay(10);
   }
 
-  delay(1000); // Add a delay before moving to the next servo
+  delay(1000);
 
-  // Test Servo 2
   for (servo2Pos = servo2Up; servo2Pos <= servo2Down; servo2Pos += 1) {
     servo2.write(servo2Pos);
-    delay(10);  // Adjust delay as needed for desired speed
+    delay(10);
   }
   for (servo2Pos = servo2Down; servo2Pos >= servo2Up; servo2Pos -= 1) {
     servo2.write(servo2Pos);
-    delay(10);  // Adjust delay as needed for desired speed
+    delay(10);
   }
 
-  delay(1000); // Add a delay before moving to the next servo
+  delay(1000);
 
-  // Test Servo 3
   for (servo3Pos = servo3Min; servo3Pos <= servo3Max; servo3Pos += 1) {
     servo3.write(servo3Pos);
-    delay(10);  // Adjust delay as needed for desired speed
+    delay(10);
   }
   for (servo3Pos = servo3Max; servo3Pos >= servo3Min; servo3Pos -= 1) {
     servo3.write(servo3Pos);
-    delay(10);  // Adjust delay as needed for desired speed
+    delay(10);
   }
 
-  delay(1000); // Add a delay after all tests are done
+  delay(1000);
 
-  // Reset all servos to their initial positions
   servo1.write(servo1Left);
   servo2.write(servo2Up);
   servo3.write(servo3Min);
 
-  delay(1000); // Wait for a while before ending the loop
+  delay(1000);
 
-  // Stop the loop to prevent continuous execution
   while (true);
 }
