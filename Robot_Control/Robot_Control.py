@@ -8,11 +8,10 @@ import serial
 
 tracking_mouse = False
 tracking_hand = False
-claw_grabbing = False  # Keeps track of claw state
+claw_grabbing = False
 
-# Claw positions
-claw_grab_pos = (170, 10)  # Servo4 grabs, Servo5 closes
-claw_release_pos = (10, 170)  # Servo4 releases, Servo5 opens
+claw_grab_pos = (170, 10)
+claw_release_pos = (10, 170)
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -45,7 +44,6 @@ def send_command():
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
 
-    # Check claw state and set servo4 and servo5 positions accordingly
     if claw_grabbing:
         servo4_pos, servo5_pos = claw_grab_pos
     else:
@@ -75,7 +73,6 @@ def on_move(x, y):
 def on_click(x, y, button, pressed):
     global claw_grabbing
     if pressed:
-        # Toggle claw state on mouse click
         claw_grabbing = not claw_grabbing
         print(f"Claw state: {'Grabbing' if claw_grabbing else 'Releasing'}")
         send_command()
