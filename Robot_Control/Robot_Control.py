@@ -8,6 +8,11 @@ import serial
 
 tracking_mouse = False
 tracking_hand = False
+claw_grabbing = False  # Keeps track of claw state
+
+# Claw positions
+claw_grab_pos = (170, 10)  # Servo4 grabs, Servo5 closes
+claw_release_pos = (10, 170)  # Servo4 releases, Servo5 opens
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -35,11 +40,18 @@ def map_value(x, in_min, in_max, out_min, out_max):
     return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 def send_command():
-    global ser, servo1_pos, servo2_pos, servo3_pos
+    global ser, servo1_pos, servo2_pos, servo3_pos, claw_grabbing
     servo1_pos = max(0, min(servo1_pos, 180))
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
-    data = struct.pack('HHH', servo1_pos, servo2_pos, servo3_pos)
+
+    # Check claw state and set servo4 and servo5 positions accordingly
+    if claw_grabbing:
+        servo4_pos, servo5_pos = claw_grab_pos
+    else:
+        servo4_pos, servo5_pos = claw_release_pos
+
+    data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
         try:
             ser.write(data)
@@ -60,6 +72,14 @@ def on_move(x, y):
         update_telemetry()
         send_command()
 
+def on_click(x, y, button, pressed):
+    global claw_grabbing
+    if pressed:
+        # Toggle claw state on mouse click
+        claw_grabbing = not claw_grabbing
+        print(f"Claw state: {'Grabbing' if claw_grabbing else 'Releasing'}")
+        send_command()
+
 def update_telemetry():
     mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
     servo_pos_label.config(text=f"Servo Positions: (Servo1: {servo1_pos}, {servo2_pos}, {servo3_pos})")
@@ -67,7 +87,7 @@ def update_telemetry():
 def start_mouse_tracking():
     global listener, tracking_mouse
     tracking_mouse = True
-    listener = mouse.Listener(on_move=on_move)
+    listener = mouse.Listener(on_move=on_move, on_click=on_click)
     listener.start()
     activate_mouse_button.config(state="disabled")
     deactivate_mouse_button.config(state="normal")
