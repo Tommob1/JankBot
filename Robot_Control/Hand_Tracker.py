@@ -11,6 +11,10 @@ hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None
 
+claw_grabbing = False
+claw_grab_pos = (170, 10)
+claw_release_pos = (10, 170)
+
 def is_fist(landmarks):
     wrist = landmarks[mp_hands.HandLandmark.WRIST]
     thumb_tip = landmarks[mp_hands.HandLandmark.THUMB_TIP]
@@ -58,11 +62,18 @@ def map_value(x, in_min, in_max, out_min, out_max):
     return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 def send_command():
-    global ser, servo1_pos, servo2_pos, servo3_pos
+    global ser, servo1_pos, servo2_pos, servo3_pos, claw_grabbing
     servo1_pos = max(0, min(servo1_pos, 180))
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
-    data = struct.pack('HHH', servo1_pos, servo2_pos, servo3_pos)
+
+    # Determine claw positions
+    if claw_grabbing:
+        servo4_pos, servo5_pos = claw_grab_pos
+    else:
+        servo4_pos, servo5_pos = claw_release_pos
+
+    data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
         try:
             ser.write(data)
