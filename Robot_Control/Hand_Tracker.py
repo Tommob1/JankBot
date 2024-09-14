@@ -36,6 +36,28 @@ def is_fist(landmarks):
         return True
     return False
 
+def is_hand_open(landmarks):
+    # Simple check: Distance between fingertips and palm is large
+    wrist = landmarks[mp_hands.HandLandmark.WRIST]
+    index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+    middle_tip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+    ring_tip = landmarks[mp_hands.HandLandmark.RING_FINGER_TIP]
+    pinky_tip = landmarks[mp_hands.HandLandmark.PINKY_TIP]
+
+    def distance(point1, point2):
+        return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
+
+    distances = [
+        distance(wrist, index_tip),
+        distance(wrist, middle_tip),
+        distance(wrist, ring_tip),
+        distance(wrist, pinky_tip),
+    ]
+
+    if all(d > 0.3 for d in distances):
+        return True
+    return False
+
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
     for port in ports:
@@ -62,16 +84,14 @@ def map_value(x, in_min, in_max, out_min, out_max):
     return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 def send_command():
-    global ser, servo1_pos, servo2_pos, servo3_pos, claw_grabbing
+    global ser, servo1_pos, servo2_pos, servo3_pos
     servo1_pos = max(0, min(servo1_pos, 180))
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
 
-    # Determine claw positions
-    if claw_grabbing:
-        servo4_pos, servo5_pos = claw_grab_pos
-    else:
-        servo4_pos, servo5_pos = claw_release_pos
+    # Set default positions for claw servos
+    servo4_pos = 90  # Adjust to your desired default position
+    servo5_pos = 90  # Adjust to your desired default position
 
     data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
@@ -85,7 +105,7 @@ def send_command():
         initialize_serial_connection()
 
 def start_hand_tracker():
-    global cap, servo1_pos, servo2_pos, servo3_pos
+    global cap, servo1_pos, servo2_pos, servo3_pos, claw_grabbing
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Error: Could not open webcam.")
@@ -94,6 +114,7 @@ def start_hand_tracker():
     dial_angle = 0
     baseline_angle = None
     tracking_hand = None
+    previous_claw_state = None
 
     while True:
         ret, image = cap.read()
@@ -133,6 +154,16 @@ def start_hand_tracker():
                 if baseline_angle is None:
                     baseline_angle = current_angle
                     print(f'Baseline angle set to: {baseline_angle}')
+
+                if is_hand_open(tracking_hand):
+                    claw_grabbing = False
+                else:
+                    claw_grabbing = True
+
+                if claw_grabbing != previous_claw_state:
+                    print(f"Claw state changed: {'Grabbing' if claw_grabbing else 'Releasing'}")
+                    previous_claw_state = claw_grabbing
+                    send_command()
 
                 dial_angle = current_angle - baseline_angle
                 dial_angle = (dial_angle + 180) % 360 - 180
