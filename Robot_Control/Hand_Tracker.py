@@ -37,7 +37,7 @@ def is_fist(landmarks):
     return False
 
 def is_hand_open(landmarks):
-    # Simple check: Distance between fingertips and palm is large
+    # Calculate distances between the tips of fingers and the wrist
     wrist = landmarks[mp_hands.HandLandmark.WRIST]
     index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
     middle_tip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
@@ -47,16 +47,21 @@ def is_hand_open(landmarks):
     def distance(point1, point2):
         return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
 
+    # Calculate average distance of finger tips from the wrist
     distances = [
         distance(wrist, index_tip),
         distance(wrist, middle_tip),
         distance(wrist, ring_tip),
-        distance(wrist, pinky_tip),
+        distance(wrist, pinky_tip)
     ]
 
-    if all(d > 0.3 for d in distances):
+    average_distance = np.mean(distances)
+
+    # Determine if the hand is open based on the average distance
+    if average_distance > 0.3:  # Threshold value; adjust as needed
         return True
-    return False
+    else:
+        return False
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
@@ -84,14 +89,16 @@ def map_value(x, in_min, in_max, out_min, out_max):
     return int((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
 def send_command():
-    global ser, servo1_pos, servo2_pos, servo3_pos
+    global ser, servo1_pos, servo2_pos, servo3_pos, claw_grabbing
     servo1_pos = max(0, min(servo1_pos, 180))
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
 
-    # Set default positions for claw servos
-    servo4_pos = 90  # Adjust to your desired default position
-    servo5_pos = 90  # Adjust to your desired default position
+    # Determine claw positions based on claw_grabbing
+    if claw_grabbing:
+        servo4_pos, servo5_pos = 170, 10  # Adjust these values if needed
+    else:
+        servo4_pos, servo5_pos = 10, 170  # Adjust these values if needed
 
     data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
@@ -103,7 +110,7 @@ def send_command():
     else:
         print("Serial connection not initialized. Reconnecting...")
         initialize_serial_connection()
-
+        
 def start_hand_tracker():
     global cap, servo1_pos, servo2_pos, servo3_pos, claw_grabbing
     cap = cv2.VideoCapture(0)
@@ -129,62 +136,51 @@ def start_hand_tracker():
         image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
         hand_landmarks_list = results.multi_hand_landmarks if results.multi_hand_landmarks else []
 
-        if len(hand_landmarks_list) == 2:
-            hand_1 = hand_landmarks_list[0].landmark
-            hand_2 = hand_landmarks_list[1].landmark
+        if hand_landmarks_list:
+            hand_landmarks = hand_landmarks_list[0].landmark
 
-            if is_fist(hand_1):
-                tracking_hand = hand_2
-            elif is_fist(hand_2):
-                tracking_hand = hand_1
-            else:
-                tracking_hand = None
-                baseline_angle = None
+            # Check if the hand is open or closed
+            hand_open = is_hand_open(hand_landmarks)
+            claw_grabbing = not hand_open  # Claw grabs when hand is closed
 
-            if tracking_hand:
-                thumb_tip = tracking_hand[mp_hands.HandLandmark.THUMB_TIP]
-                wrist = tracking_hand[mp_hands.HandLandmark.WRIST]
-                index_tip = tracking_hand[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            # Update claw state if it has changed
+            if claw_grabbing != previous_claw_state:
+                print(f"Claw state: {'Grabbing' if claw_grabbing else 'Releasing'}")
+                previous_claw_state = claw_grabbing
 
-                dx = thumb_tip.x - wrist.x
-                dy = thumb_tip.y - wrist.y
-                current_angle = np.arctan2(dy, dx) * 180 / np.pi
-                print(f'Current angle: {current_angle}')
+            # Angle calculation using middle finger
+            wrist = hand_landmarks[mp_hands.HandLandmark.WRIST]
+            middle_tip = hand_landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
 
-                if baseline_angle is None:
-                    baseline_angle = current_angle
-                    print(f'Baseline angle set to: {baseline_angle}')
+            dx = middle_tip.x - wrist.x
+            dy = middle_tip.y - wrist.y
+            current_angle = np.arctan2(dy, dx) * 180 / np.pi
 
-                if is_hand_open(tracking_hand):
-                    claw_grabbing = False
-                else:
-                    claw_grabbing = True
+            if baseline_angle is None:
+                baseline_angle = current_angle
 
-                if claw_grabbing != previous_claw_state:
-                    print(f"Claw state changed: {'Grabbing' if claw_grabbing else 'Releasing'}")
-                    previous_claw_state = claw_grabbing
-                    send_command()
+            dial_angle = current_angle - baseline_angle
+            dial_angle = (dial_angle + 180) % 360 - 180
 
-                dial_angle = current_angle - baseline_angle
-                dial_angle = (dial_angle + 180) % 360 - 180
+            # Visual feedback
+            center = (int(image.shape[1] * wrist.x), int(image.shape[0] * wrist.y))
+            cv2.ellipse(image, center, (50, 50), -90, 0, dial_angle, (255, 0, 0), 5)
+            cv2.putText(image, f'{int(dial_angle)}', (center[0], center[1] - 60),
+                        cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 3, cv2.LINE_AA)
 
-                center = (int(image.shape[1] * wrist.x), int(image.shape[0] * wrist.y))
-                cv2.ellipse(image, center, (50, 50), -90, 0, dial_angle, (255, 0, 0), 5)
-                cv2.putText(image, f'{int(dial_angle)}', (center[0], center[1] - 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 3, cv2.LINE_AA)
-                print(f'Dial angle: {dial_angle}')
+            # Map angles to servo positions
+            servo1_pos = map_value(dial_angle, -180, 180, 0, 180)
+            hand_pos_y = wrist.y * image.shape[0]
+            hand_pos_x = middle_tip.x * image.shape[1]
+            servo2_pos = map_value(hand_pos_y, 0, image.shape[0], 10, 170)
+            servo3_pos = map_value(hand_pos_x, 0, image.shape[1], 10, 170)
 
-                servo1_pos = map_value(dial_angle, -180, 180, 0, 180)
-                hand_pos_y = wrist.y * image.shape[0]
-                hand_pos_x = index_tip.x * image.shape[1]
-                servo2_pos = map_value(hand_pos_y, 0, image.shape[0], 10, 170)
-                servo3_pos = map_value(hand_pos_x, 0, image.shape[1], 10, 170)
+            send_command()
 
-                send_command()
-
-        for hand_landmarks in hand_landmarks_list:
+            # Draw hand landmarks
             mp_drawing.draw_landmarks(
-                image, 
-                hand_landmarks, 
+                image,
+                results.multi_hand_landmarks[0],
                 mp_hands.HAND_CONNECTIONS,
                 mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=5, circle_radius=5),
                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
