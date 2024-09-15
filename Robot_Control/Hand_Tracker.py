@@ -37,7 +37,6 @@ def is_fist(landmarks):
     return False
 
 def is_hand_open(landmarks):
-    # Calculate distances between the tips of fingers and the wrist
     wrist = landmarks[mp_hands.HandLandmark.WRIST]
     index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
     middle_tip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
@@ -47,7 +46,6 @@ def is_hand_open(landmarks):
     def distance(point1, point2):
         return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
 
-    # Calculate average distance of finger tips from the wrist
     distances = [
         distance(wrist, index_tip),
         distance(wrist, middle_tip),
@@ -57,8 +55,7 @@ def is_hand_open(landmarks):
 
     average_distance = np.mean(distances)
 
-    # Determine if the hand is open based on the average distance
-    if average_distance > 0.3:  # Threshold value; adjust as needed
+    if average_distance > 0.3:
         return True
     else:
         return False
@@ -94,11 +91,10 @@ def send_command():
     servo2_pos = max(0, min(servo2_pos, 180))
     servo3_pos = max(0, min(servo3_pos, 180))
 
-    # Determine claw positions based on claw_grabbing
     if claw_grabbing:
-        servo4_pos, servo5_pos = 170, 10  # Adjust these values if needed
+        servo4_pos, servo5_pos = 170, 10
     else:
-        servo4_pos, servo5_pos = 10, 170  # Adjust these values if needed
+        servo4_pos, servo5_pos = 10, 170
 
     data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
