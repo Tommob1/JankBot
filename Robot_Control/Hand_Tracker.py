@@ -135,16 +135,13 @@ def start_hand_tracker():
         if hand_landmarks_list:
             hand_landmarks = hand_landmarks_list[0].landmark
 
-            # Check if the hand is open or closed
             hand_open = is_hand_open(hand_landmarks)
-            claw_grabbing = not hand_open  # Claw grabs when hand is closed
+            claw_grabbing = not hand_open
 
-            # Update claw state if it has changed
             if claw_grabbing != previous_claw_state:
                 print(f"Claw state: {'Grabbing' if claw_grabbing else 'Releasing'}")
                 previous_claw_state = claw_grabbing
 
-            # Angle calculation using middle finger
             wrist = hand_landmarks[mp_hands.HandLandmark.WRIST]
             middle_tip = hand_landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
 
@@ -158,13 +155,11 @@ def start_hand_tracker():
             dial_angle = current_angle - baseline_angle
             dial_angle = (dial_angle + 180) % 360 - 180
 
-            # Visual feedback
             center = (int(image.shape[1] * wrist.x), int(image.shape[0] * wrist.y))
             cv2.ellipse(image, center, (50, 50), -90, 0, dial_angle, (255, 0, 0), 5)
             cv2.putText(image, f'{int(dial_angle)}', (center[0], center[1] - 60),
                         cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 3, cv2.LINE_AA)
 
-            # Map angles to servo positions
             servo1_pos = map_value(dial_angle, -180, 180, 0, 180)
             hand_pos_y = wrist.y * image.shape[0]
             hand_pos_x = middle_tip.x * image.shape[1]
@@ -173,7 +168,6 @@ def start_hand_tracker():
 
             send_command()
 
-            # Draw hand landmarks
             mp_drawing.draw_landmarks(
                 image,
                 results.multi_hand_landmarks[0],
