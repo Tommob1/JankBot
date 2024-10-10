@@ -134,7 +134,6 @@ def start_hand_tracker():
 
         if hand_landmarks_list:
             hand_landmarks = hand_landmarks_list[0].landmark
-
             hand_open = is_hand_open(hand_landmarks)
             claw_grabbing = not hand_open
 
@@ -165,7 +164,6 @@ def start_hand_tracker():
             hand_pos_x = middle_tip.x * image.shape[1]
             servo2_pos = map_value(hand_pos_y, 0, image.shape[0], 10, 170)
             servo3_pos = map_value(hand_pos_x, 0, image.shape[1], 10, 170)
-
             send_command()
 
             mp_drawing.draw_landmarks(
@@ -176,7 +174,6 @@ def start_hand_tracker():
                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=5))
 
         cv2.imshow('Hand Tracker', image)
-
         if cv2.waitKey(1) & 0xFF == 27:
             break
 
