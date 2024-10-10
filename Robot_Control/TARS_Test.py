@@ -38,7 +38,6 @@ def play_mp3(file):
 def run_test():
     if not check_arduino_cli():
         return
-
     play_mp3("Servo_Joint_Calibration_Test/TARS/Test_Activation.mp3")
     time.sleep(1)
     upload_sketch()
