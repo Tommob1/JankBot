@@ -92,9 +92,9 @@ def send_command():
     servo3_pos = max(0, min(servo3_pos, 180))
 
     if claw_grabbing:
-        servo4_pos, servo5_pos = 170, 10
-    else:
         servo4_pos, servo5_pos = 10, 170
+    else:
+        servo4_pos, servo5_pos = 170, 10
 
     data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
