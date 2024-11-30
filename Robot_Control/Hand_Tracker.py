@@ -162,7 +162,7 @@ def start_hand_tracker():
             hand_pos_y = wrist.y * image.shape[0]
             hand_pos_x = middle_tip.x * image.shape[1]
             servo2_pos = map_value(hand_pos_y, 0, image.shape[0], 10, 170)
-            servo3_pos = map_value(hand_pos_x, 0, image.shape[1], 10, 170)
+            servo3_pos = map_value(hand_pos_x, 0, image.shape[1], 170, 10)
             send_command()
 
             mp_drawing.draw_landmarks(
