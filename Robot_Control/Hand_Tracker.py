@@ -116,7 +116,6 @@ def start_hand_tracker():
 
     dial_angle = 0
     baseline_angle = None
-    tracking_hand = None
     previous_claw_state = None
 
     while True:
