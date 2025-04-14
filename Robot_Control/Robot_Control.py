@@ -1,10 +1,11 @@
 import tkinter as tk
-from customtkinter import *
+from customtkinter import CTk
 from logo import ascii_art
 import Hand_Tracker
 from pynput import mouse
 import struct
 import serial
+
 #import Remote_Access
 
 tracking_mouse = False
