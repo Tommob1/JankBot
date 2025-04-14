@@ -5,7 +5,7 @@ import Hand_Tracker
 from pynput import mouse
 import struct
 import serial
-import Remote_Access
+#import Remote_Access
 
 tracking_mouse = False
 tracking_hand = False
