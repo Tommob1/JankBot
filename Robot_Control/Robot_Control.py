@@ -14,6 +14,9 @@ claw_grabbing = False
 claw_grab_pos = (170, 10)
 claw_release_pos = (10, 170)
 
+mouse_x, mouse_y = 0, 0
+servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
+
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
     for port in ports:
