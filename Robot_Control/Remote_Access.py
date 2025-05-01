@@ -1,6 +1,4 @@
-import sys
 import serial
-import pynput
 
 def find_arduino_port():
     ports = list(serial.tools.list_ports.comports())
