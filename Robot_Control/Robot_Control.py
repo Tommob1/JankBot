@@ -1,5 +1,5 @@
 import tkinter as tk
-from customtkinter import CTk
+#from customtkinter import CTk
 from logo import ascii_art
 import Hand_Tracker
 from pynput import mouse
