@@ -1,38 +1,16 @@
-"""voice_movement.py  – continuous robot jog control via Vosk keywords
+"""voice_movement.py  – continuous robot jog control + reset/open/close
 
-Public API
-~~~~~~~~~~
-    handle_command(words: list[str])
-        Called by the GUI for each recognised utterance.
-        Parses keywords and updates the global *direction state*.
+新增关键字 / New keywords
+~~~~~~~~~~~~~~~~~~~~~~~~
+    reset  – toggles Arduino DTR to reboot **and** returns all servos to 90°
+    open   – releases the claw
+    close  – grabs the claw  (alias: grab)
 
-Direction keywords (case-insensitive)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    left  / right   → continuous pan  (servo_pan)
-    up    / down    → continuous tilt (servo_tilt)
-    stop           → stop all motion (but resend angles once)
+Existing motion keys continue to work:
+    left / right / up / down / stop
 
-Optional extras
-~~~~~~~~~~~~~~~
-    open  → open claw
-    close / grab → close claw
-
-Motion model
-~~~~~~~~~~~~
-A background thread runs at 10 Hz.  At each tick it nudges the pan/tilt angles
-by `STEP_DEG` · direction and sends the 5-value packet.  When both direction
-axes are zero the loop exits and the thread stops until a new direction word
-is received.
-
-Standalone test
-~~~~~~~~~~~~~~~
-You can still run this file directly:
-
-    python voice_movement.py models/vosk-model-small-en-us-0.15
-
-Dependencies
-~~~~~~~~~~~~
-    pip install vosk sounddevice pyserial
+Tweaking speed:
+    STEP_DEG (° per tick) and TICK_HZ (ticks-per-second) at top of file.
 """
 from __future__ import annotations
 import argparse, json, queue, struct, sys, threading, time
@@ -46,8 +24,8 @@ from vosk import KaldiRecognizer, Model
 # Servo state & constants
 # ──────────────────────────────────────────────────────────────────────
 SERVO_MIN, SERVO_MAX = 10, 170
-STEP_DEG   = 5              # degrees per tick
-TICK_HZ    = 10             # servo update frequency while moving
+STEP_DEG   = 2              # degrees per tick
+TICK_HZ    = 8              # servo update frequency
 
 servo_pan   = 90  # horizontal axis
 servo_tilt  = 90  # vertical axis
@@ -57,15 +35,14 @@ claw_grab_angles    = (170, 10)
 claw_release_angles = (10, 170)
 claw_grabbing = False
 
-# current motion directions: -1, 0, +1
 _dir_x = 0  # -1 = left, +1 = right
 _dir_y = 0  # -1 = up,   +1 = down
 
-_move_evt   = threading.Event()  # set while the mover thread should run
+_move_evt   = threading.Event()
 _mover_thr: threading.Thread | None = None
 
 # ──────────────────────────────────────────────────────────────────────
-# Serial helpers – identical packet format to GUI
+# Serial helpers
 # ──────────────────────────────────────────────────────────────────────
 
 def _find_arduino() -> str | None:
@@ -115,8 +92,7 @@ def _mover_loop():
     tick = 1 / TICK_HZ
     while _move_evt.is_set():
         if _dir_x == 0 and _dir_y == 0:
-            _move_evt.clear()
-            break
+            _move_evt.clear(); break
         servo_pan  += STEP_DEG * _dir_x
         servo_tilt += STEP_DEG * _dir_y
         _send_angles()
@@ -127,8 +103,8 @@ def _mover_loop():
 # ──────────────────────────────────────────────────────────────────────
 
 def handle_command(words: list[str]):
-    """Parse keywords, update direction state, and manage mover thread."""
-    global _dir_x, _dir_y, claw_grabbing, _mover_thr
+    """Update motion/claw state according to keywords and manage mover."""
+    global _dir_x, _dir_y, claw_grabbing, servo_pan, servo_tilt, servo_level, ser, _mover_thr
 
     for w in words:
         w = w.lower()
@@ -143,45 +119,42 @@ def handle_command(words: list[str]):
         elif w == "stop":
             _dir_x = _dir_y = 0
         elif w in {"open", "release"}:
-            claw_grabbing = False
-        elif w in {"close", "grab"}:
             claw_grabbing = True
+        elif w in {"close", "grab"}:
+            claw_grabbing = False
+        elif w == "reset":
+            # reset Arduino via DTR toggle and zero servos
+            if ser:
+                try:
+                    ser.setDTR(False); time.sleep(0.1); ser.setDTR(True)
+                except serial.SerialException:
+                    ser = _open_serial()
+            servo_pan = servo_tilt = servo_level = 90
+            _dir_x = _dir_y = 0
 
-    # always send a packet immediately so claw/open/stop act fast
     _send_angles()
 
-    # manage mover thread
-    if (_dir_x != 0 or _dir_y != 0) and not _move_evt.is_set():
-        _move_evt.set()
-        _mover_thr = threading.Thread(target=_mover_loop, daemon=True)
-        _mover_thr.start()
+    if (_dir_x or _dir_y) and not _move_evt.is_set():
+        _move_evt.set(); _mover_thr = threading.Thread(target=_mover_loop, daemon=True); _mover_thr.start()
 
 # ──────────────────────────────────────────────────────────────────────
-# Stand-alone recogniser (optional)
+# Stand-alone recogniser (unchanged)
 # ──────────────────────────────────────────────────────────────────────
 VOICE_RATE, VOICE_BLOCK = 16_000, 8_000
 _voice_evt = threading.Event()
 
 def _voice_loop(model_dir: Path):
-    mdl = Model(str(model_dir))
-    rec = KaldiRecognizer(mdl, VOICE_RATE)
+    mdl = Model(str(model_dir)); rec = KaldiRecognizer(mdl, VOICE_RATE)
     q: queue.Queue[bytes] = queue.Queue()
-
     def cb(indata, frames, t, status):
-        if status:
-            print(status, file=sys.stderr)
-        q.put(bytes(indata))
-
-    print("[Voice] say left/right/up/down/stop/open/close")
-    with sd.RawInputStream(samplerate=VOICE_RATE, blocksize=VOICE_BLOCK,
-                           dtype="int16", channels=1, callback=cb):
+        if status: print(status, file=sys.stderr); q.put(bytes(indata))
+    print("[Voice] say left/right/up/down/stop/open/close/reset")
+    with sd.RawInputStream(samplerate=VOICE_RATE, blocksize=VOICE_BLOCK, dtype="int16", channels=1, callback=cb):
         while _voice_evt.is_set():
             data = q.get()
             if rec.AcceptWaveform(data):
                 txt = json.loads(rec.Result()).get("text", "").strip()
-                if txt:
-                    print(">>", txt)
-                    handle_command(txt.split())
+                if txt: print(">>", txt); handle_command(txt.split())
 
 # ---------------------------------------------------------------------
 # CLI  –  python voice_movement.py model_dir
