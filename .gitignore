@@ -1,1 +1,10 @@
-.DS_STORE
+# Python cache & virtual-envs
+__pycache__/
+*.py[cod]
+
+# local environments
+venv/
+robot_control_env/
+
+# OS cruft
+.DS_Store
