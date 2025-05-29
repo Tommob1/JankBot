@@ -7,6 +7,7 @@ import struct
 import serial
 import threading, queue, json, sounddevice as sd
 from vosk import Model, KaldiRecognizer
+from voice_movement import handle_command
 
 #import Remote_Access
 
@@ -148,9 +149,11 @@ VOICE_MODEL_DIR  = "models/vosk-model-small-en-us-0.15"   # adjust path
 
 # ─── helper to launch/stall recogniser in a thread ─────────────────────
 def voice_worker():
+    """Background thread: listen and forward final commands to handle_command."""
     model = Model(VOICE_MODEL_DIR)
     rec   = KaldiRecognizer(model, VOICE_SAMPLE_RATE)
     rec.SetWords(True)
+
     q_audio: queue.Queue[bytes] = queue.Queue()
 
     def audio_cb(indata, frames, time, status):
@@ -158,22 +161,24 @@ def voice_worker():
             print(status)
         q_audio.put(bytes(indata))
 
-    print("[Voice] model loaded – listening (Ctrl-C in terminal stops entire app)")
+    print("[Voice] model loaded – listening (say left / right / up / down / stop)")
     try:
-        with sd.RawInputStream(samplerate=VOICE_SAMPLE_RATE,
-                               blocksize=VOICE_BLOCK_LEN,
-                               dtype="int16",
-                               channels=1,
-                               callback=audio_cb):
+        with sd.RawInputStream(
+            samplerate=VOICE_SAMPLE_RATE,
+            blocksize=VOICE_BLOCK_LEN,
+            dtype="int16",
+            channels=1,
+            callback=audio_cb,
+        ):
             while voice_running.is_set():
                 data = q_audio.get()
                 if rec.AcceptWaveform(data):
-                    text = json.loads(rec.Result()).get("text", "")
+                    result = json.loads(rec.Result())
+                    text   = result.get("text", "").strip()
                     if text:
                         print(f">> {text}")
-                else:
-                    # we ignore partials for now
-                    pass
+                        handle_command(text.split())   # send words to robot
+                # partial results are ignored
     except Exception as e:
         print("[Voice] error:", e)
     print("[Voice] stopped")
