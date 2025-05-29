@@ -162,3 +162,5 @@ servo_pos_label = tk.Label(root, text="Servo Positions: (Servo1: 90, Servo2: 90,
 servo_pos_label.pack(pady=10)
 
 root.after(1000, lambda: load_text_character_by_character(title_label, ascii_art, 0, 1))
+
+root.mainloop()
