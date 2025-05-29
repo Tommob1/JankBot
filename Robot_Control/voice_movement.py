@@ -1,16 +1,14 @@
-"""voice_movement.py  – continuous robot jog control + reset/open/close
+"""voice_movement.py  – continuous robot jog control + reset/open/close + hello wave
 
-新增关键字 / New keywords
-~~~~~~~~~~~~~~~~~~~~~~~~
-    reset  – toggles Arduino DTR to reboot **and** returns all servos to 90°
-    open   – releases the claw
-    close  – grabs the claw  (alias: grab)
+Keywords
+~~~~~~~~
+Motion  : left, right, up, down, stop  (continuous until stop)
+Claw    : open / release, close / grab
+Reset   : reset  → reboots Arduino & centres arm
+Wave    : hello  → servo3 (wrist) waves for 2 seconds
 
-Existing motion keys continue to work:
-    left / right / up / down / stop
-
-Tweaking speed:
-    STEP_DEG (° per tick) and TICK_HZ (ticks-per-second) at top of file.
+Speed constants at top:
+    STEP_DEG  (deg per tick)  |  TICK_HZ  (ticks/s)
 """
 from __future__ import annotations
 import argparse, json, queue, struct, sys, threading, time
@@ -24,22 +22,27 @@ from vosk import KaldiRecognizer, Model
 # Servo state & constants
 # ──────────────────────────────────────────────────────────────────────
 SERVO_MIN, SERVO_MAX = 10, 170
-STEP_DEG   = 2              # degrees per tick
-TICK_HZ    = 8              # servo update frequency
+STEP_DEG   = 2               # degrees per tick
+TICK_HZ    = 8               # servo update frequency
 
-servo_pan   = 90  # horizontal axis
-servo_tilt  = 90  # vertical axis
-servo_level = 90  # unchanged
+WAVE_DURATION = 2.0          # seconds
+WAVE_HZ       = 6            # wrist flips per second
+WAVE_AMPL     = 25           # ± degrees around current level
+
+servo_pan   = 90
+servo_tilt  = 90
+servo_level = 90  # wrist
 
 claw_grab_angles    = (170, 10)
 claw_release_angles = (10, 170)
 claw_grabbing = False
 
-_dir_x = 0  # -1 = left, +1 = right
-_dir_y = 0  # -1 = up,   +1 = down
+_dir_x = 0
+_dir_y = 0
 
 _move_evt   = threading.Event()
 _mover_thr: threading.Thread | None = None
+_wave_thr:   threading.Thread | None = None
 
 # ──────────────────────────────────────────────────────────────────────
 # Serial helpers
@@ -99,12 +102,28 @@ def _mover_loop():
         time.sleep(tick)
 
 # ──────────────────────────────────────────────────────────────────────
-# Public function – call from GUI
+# Wave helper thread (servo_level oscillation)
+# ──────────────────────────────────────────────────────────────────────
+
+def _wave_loop(origin: int):
+    global servo_level
+    interval = 1 / (2 * WAVE_HZ)  # half-period toggle
+    end_time = time.time() + WAVE_DURATION
+    up = True
+    while time.time() < end_time:
+        servo_level = _clamp(origin + (WAVE_AMPL if up else -WAVE_AMPL))
+        _send_angles()
+        up = not up
+        time.sleep(interval)
+    servo_level = origin  # restore
+    _send_angles()
+
+# ──────────────────────────────────────────────────────────────────────
+# Public function – called by GUI / recogniser
 # ──────────────────────────────────────────────────────────────────────
 
 def handle_command(words: list[str]):
-    """Update motion/claw state according to keywords and manage mover."""
-    global _dir_x, _dir_y, claw_grabbing, servo_pan, servo_tilt, servo_level, ser, _mover_thr
+    global _dir_x, _dir_y, claw_grabbing, servo_pan, servo_tilt, servo_level, ser, _mover_thr, _wave_thr
 
     for w in words:
         w = w.lower()
@@ -119,11 +138,10 @@ def handle_command(words: list[str]):
         elif w == "stop":
             _dir_x = _dir_y = 0
         elif w in {"open", "release"}:
-            claw_grabbing = True
-        elif w in {"close", "grab"}:
             claw_grabbing = False
+        elif w in {"close", "grab"}:
+            claw_grabbing = True
         elif w == "reset":
-            # reset Arduino via DTR toggle and zero servos
             if ser:
                 try:
                     ser.setDTR(False); time.sleep(0.1); ser.setDTR(True)
@@ -131,6 +149,11 @@ def handle_command(words: list[str]):
                     ser = _open_serial()
             servo_pan = servo_tilt = servo_level = 90
             _dir_x = _dir_y = 0
+        elif w == "hello":
+            if not _wave_thr or not _wave_thr.is_alive():
+                origin = servo_level
+                _wave_thr = threading.Thread(target=_wave_loop, args=(origin,), daemon=True)
+                _wave_thr.start()
 
     _send_angles()
 
@@ -148,13 +171,14 @@ def _voice_loop(model_dir: Path):
     q: queue.Queue[bytes] = queue.Queue()
     def cb(indata, frames, t, status):
         if status: print(status, file=sys.stderr); q.put(bytes(indata))
-    print("[Voice] say left/right/up/down/stop/open/close/reset")
+    print("[Voice] say left/right/up/down/stop/open/close/reset/hello")
     with sd.RawInputStream(samplerate=VOICE_RATE, blocksize=VOICE_BLOCK, dtype="int16", channels=1, callback=cb):
         while _voice_evt.is_set():
-            data = q.get()
+            data = q.get();
             if rec.AcceptWaveform(data):
                 txt = json.loads(rec.Result()).get("text", "").strip()
-                if txt: print(">>", txt); handle_command(txt.split())
+                if txt:
+                    print(">>", txt); handle_command(txt.split())
 
 # ---------------------------------------------------------------------
 # CLI  –  python voice_movement.py model_dir
