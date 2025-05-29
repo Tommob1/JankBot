@@ -5,6 +5,8 @@ import Hand_Tracker
 from pynput import mouse
 import struct
 import serial
+import threading, queue, json, sounddevice as sd
+from vosk import Model, KaldiRecognizer
 
 #import Remote_Access
 
@@ -132,6 +134,78 @@ root = tk.Tk()
 root.title("Robot Control")
 root.geometry("1280x720")
 root.configure(bg='black')
+
+# ─── add these imports near the top ────────────────────────────────────
+import threading, queue, json, sounddevice as sd
+from vosk import Model, KaldiRecognizer
+
+# ─── recogniser globals ────────────────────────────────────────────────
+voice_thread   = None
+voice_running  = threading.Event()
+VOICE_SAMPLE_RATE = 16_000
+VOICE_BLOCK_LEN  = 8_000          # ~0.25 s
+VOICE_MODEL_DIR  = "models/vosk-model-small-en-us-0.15"   # adjust path
+
+# ─── helper to launch/stall recogniser in a thread ─────────────────────
+def voice_worker():
+    model = Model(VOICE_MODEL_DIR)
+    rec   = KaldiRecognizer(model, VOICE_SAMPLE_RATE)
+    rec.SetWords(True)
+    q_audio: queue.Queue[bytes] = queue.Queue()
+
+    def audio_cb(indata, frames, time, status):
+        if status:
+            print(status)
+        q_audio.put(bytes(indata))
+
+    print("[Voice] model loaded – listening (Ctrl-C in terminal stops entire app)")
+    try:
+        with sd.RawInputStream(samplerate=VOICE_SAMPLE_RATE,
+                               blocksize=VOICE_BLOCK_LEN,
+                               dtype="int16",
+                               channels=1,
+                               callback=audio_cb):
+            while voice_running.is_set():
+                data = q_audio.get()
+                if rec.AcceptWaveform(data):
+                    text = json.loads(rec.Result()).get("text", "")
+                    if text:
+                        print(f">> {text}")
+                else:
+                    # we ignore partials for now
+                    pass
+    except Exception as e:
+        print("[Voice] error:", e)
+    print("[Voice] stopped")
+
+def start_voice():
+    global voice_thread
+    if voice_thread and voice_thread.is_alive():
+        return
+    voice_running.set()
+    voice_thread = threading.Thread(target=voice_worker, daemon=True)
+    voice_thread.start()
+    activate_voice_btn.config(state="disabled")
+    deactivate_voice_btn.config(state="normal")
+
+def stop_voice():
+    voice_running.clear()
+    activate_voice_btn.config(state="normal")
+    deactivate_voice_btn.config(state="disabled")
+
+# ─── GUI buttons (add where you create other buttons) ──────────────────
+activate_voice_btn = tk.Button(root,
+    text="Activate Voice Cmd",
+    command=start_voice,
+    bg="green", fg="black")
+activate_voice_btn.pack(pady=10, padx=10)
+
+deactivate_voice_btn = tk.Button(root,
+    text="Stop Voice Cmd",
+    command=stop_voice,
+    bg="orange", fg="black")
+deactivate_voice_btn.pack(pady=10, padx=10)
+deactivate_voice_btn.config(state="disabled")
 
 text_color = "#00ff00"
 button_color = "#333333"
