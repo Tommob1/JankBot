@@ -128,18 +128,27 @@ def _pan_wave_loop(origin: int):
     global servo_pan, claw_grabbing
     half_period = 1 / (2 * WAVE_HZ)
     end_time    = time.time() + WAVE_DURATION
-    swing_right = True  # True → right swing & claw open
+
+    wave_right = True  # initialise state BEFORE loop
 
     while time.time() < end_time:
-        # pan position
-        delta      = WAVE_AMPL if swing_right else -WAVE_AMPL
-        servo_pan  = _clamp(origin + delta)
-        # claw state (open on right swing)
-        claw_grabbing = not swing_right
+        # update pan position
+        delta = WAVE_AMPL if wave_right else -WAVE_AMPL
+        servo_pan = _clamp(origin + delta)
+
+        # claw: open when waving right, close when waving left
+        claw_grabbing = not wave_right
 
         _send_angles()
-        swing_right = not swing_right
+        wave_right = not wave_right  # flip direction for next cycle
         time.sleep(half_period)
+
+    # final pose – original pan, claw open
+    servo_pan = origin
+    claw_grabbing = True
+    _send_angles()
+    swing_right = not swing_right
+    time.sleep(half_period)
 
     # restore original pan, leave claw open
     servo_pan      = origin
@@ -184,9 +193,9 @@ def handle_command(words: list[str]):
         elif w == "stop":
             _dir_x = _dir_y = 0
         elif w in {"open", "release"}:
-            claw_grabbing = False
-        elif w in {"close", "grab"}:
             claw_grabbing = True
+        elif w in {"close", "grab"}:
+            claw_grabbing = False
         elif w == "reset":
             if ser:
                 try:
