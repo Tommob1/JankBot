@@ -1,10 +1,15 @@
 from __future__ import annotations
 import argparse, json, queue, struct, sys, threading, time
 from pathlib import Path
-
 import serial, serial.tools.list_ports as list_ports
 import sounddevice as sd
 from vosk import KaldiRecognizer, Model
+
+COMMAND_WORDS = {
+    "left", "right", "up", "down", "stop",
+    "open", "release", "close", "grab",
+    "reset", "hello",
+}
 
 SERVO_MIN, SERVO_MAX = 10, 170
 STEP_DEG   = 2
@@ -93,8 +98,11 @@ def _pan_wave_loop(origin: int):
 def handle_command(words: list[str]):
     global _dir_x, _dir_y, claw_grabbing, servo_pan, servo_tilt, servo_level, ser, _mover_thr, _wave_thr
 
-    for w in words:
-        w = w.lower()
+    cmds = [w.lower() for w in words if w.lower() in COMMAND_WORDS]
+    if not cmds:
+        return
+
+    for w in cmds:
         if w == "left":
             _dir_x = -1
         elif w == "right":
@@ -105,10 +113,10 @@ def handle_command(words: list[str]):
             _dir_y = 1
         elif w == "stop":
             _dir_x = _dir_y = 0
-        elif w in {"open", "release"}:
-            claw_grabbing = True
-        elif w in {"close", "grab"}:
+        elif w in {"close", "release"}:
             claw_grabbing = False
+        elif w in {"open", "grab"}:
+            claw_grabbing = True
         elif w == "reset":
             if ser:
                 try:
@@ -118,9 +126,9 @@ def handle_command(words: list[str]):
             servo_pan = servo_tilt = servo_level = 90
             _dir_x = _dir_y = 0
         elif w == "hello":
-            servo_level = SERVO_MAX
             servo_tilt  = SERVO_MIN
-            claw_grabbing = True
+            servo_level = SERVO_MAX
+            claw_grabbing = False
             _dir_x = _dir_y = 0
             if not _wave_thr or not _wave_thr.is_alive():
                 origin = servo_pan
@@ -139,14 +147,16 @@ def _voice_loop(model_dir: Path):
     mdl = Model(str(model_dir)); rec = KaldiRecognizer(mdl, VOICE_RATE); q: queue.Queue[bytes] = queue.Queue()
     def cb(indata, frames, t, status):
         if status: print(status, file=sys.stderr); q.put(bytes(indata))
-    print("[Voice] say left/right/up/down/stop/open/close/reset/hello")
+    print(f"[Voice] say {' / '.join(sorted(COMMAND_WORDS))}")
     with sd.RawInputStream(samplerate=VOICE_RATE, blocksize=VOICE_BLOCK, dtype="int16", channels=1, callback=cb):
         while _voice_evt.is_set():
-            data = q.get();
+            data = q.get()
             if rec.AcceptWaveform(data):
-                txt = json.loads(rec.Result()).get("text", "").strip()
-                if txt:
-                    print(">>", txt); handle_command(txt.split())
+                txt = json.loads(rec.Result()).get("text", "")
+                words = [w for w in txt.split() if w in COMMAND_WORDS]
+                if words:
+                    print(">>", " ".join(words))
+                    handle_command(words)
 
 def main():
     ap = argparse.ArgumentParser("Continuous voice jog controller")
