@@ -1,20 +1,3 @@
-"""voice_command.py
-Listen through the default microphone, recognise speech with Vosk,
-and print partial and final transcripts to stdout in real time.
-
-Usage
------
-    pip install vosk sounddevice
-
-    # download a model once, e.g.
-    wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
-    unzip vosk-model-small-en-us-0.15.zip -d models/
-
-    python voice_command.py models/vosk-model-small-en-us-0.15
-
-Press Ctrl-C to stop recording.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -26,11 +9,10 @@ from pathlib import Path
 import sounddevice as sd
 from vosk import KaldiRecognizer, Model
 
-SAMPLE_RATE = 16_000  # Hz – most Vosk models expect 16-kHz mono
-BLOCK_LEN = 8_000     # bytes (~0.25 s with int16)
-FORMAT = "int16"      # 16-bit signed little-endian
+SAMPLE_RATE = 16_000
+BLOCK_LEN = 8_000
+FORMAT = "int16"
 
-# ── CLI ──────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser(description="Live speech-to-text with Vosk")
 parser.add_argument(
     "model_dir",
@@ -42,7 +24,6 @@ args = parser.parse_args()
 if not args.model_dir.is_dir():
     sys.exit(f"Model directory '{args.model_dir}' not found.")
 
-# ── Initialisation ───────────────────────────────────────────────────
 print("Loading Vosk model…", file=sys.stderr)
 model = Model(str(args.model_dir))
 rec = KaldiRecognizer(model, SAMPLE_RATE)
@@ -55,7 +36,6 @@ def audio_cb(indata, frames, time, status):
         print(status, file=sys.stderr)
     audio_q.put(bytes(indata))
 
-# ── Main loop ────────────────────────────────────────────────────────
 try:
     with sd.RawInputStream(
         samplerate=SAMPLE_RATE,
@@ -75,7 +55,6 @@ try:
                 partial_json = json.loads(rec.PartialResult())
                 partial = partial_json.get("partial", "")
                 if partial:
-                    # carriage return lets us overwrite the same line
                     print(f"\r{partial}        ", end="", flush=True)
 except KeyboardInterrupt:
     print("\n[stopped]")
