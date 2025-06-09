@@ -8,6 +8,8 @@ import serial
 import threading, queue, json, sounddevice as sd
 from vosk import Model, KaldiRecognizer
 from voice_movement import handle_command
+import threading, queue, json, sounddevice as sd
+from vosk import Model, KaldiRecognizer
 
 #import Remote_Access
 
@@ -136,18 +138,12 @@ root.title("Robot Control")
 root.geometry("1280x720")
 root.configure(bg='black')
 
-# ─── add these imports near the top ────────────────────────────────────
-import threading, queue, json, sounddevice as sd
-from vosk import Model, KaldiRecognizer
-
-# ─── recogniser globals ────────────────────────────────────────────────
 voice_thread   = None
 voice_running  = threading.Event()
 VOICE_SAMPLE_RATE = 16_000
-VOICE_BLOCK_LEN  = 8_000          # ~0.25 s
-VOICE_MODEL_DIR  = "models/vosk-model-small-en-us-0.15"   # adjust path
+VOICE_BLOCK_LEN  = 8_000
+VOICE_MODEL_DIR  = "models/vosk-model-small-en-us-0.15"
 
-# ─── helper to launch/stall recogniser in a thread ─────────────────────
 def voice_worker():
     """Background thread: listen and forward final commands to handle_command."""
     model = Model(VOICE_MODEL_DIR)
@@ -177,8 +173,7 @@ def voice_worker():
                     text   = result.get("text", "").strip()
                     if text:
                         print(f">> {text}")
-                        handle_command(text.split())   # send words to robot
-                # partial results are ignored
+                        handle_command(text.split())
     except Exception as e:
         print("[Voice] error:", e)
     print("[Voice] stopped")
@@ -198,7 +193,6 @@ def stop_voice():
     activate_voice_btn.config(state="normal")
     deactivate_voice_btn.config(state="disabled")
 
-# ─── GUI buttons (add where you create other buttons) ──────────────────
 activate_voice_btn = tk.Button(root,
     text="Activate Voice Cmd",
     command=start_voice,
