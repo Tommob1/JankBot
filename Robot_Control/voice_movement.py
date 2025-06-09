@@ -1,19 +1,3 @@
-"""voice_movement.py  – continuous jog + reset/open/close + friendly hello wave
-
-Voice keywords
---------------
-* **left / right / up / down** – continuous motion (stops only on *stop*)
-* **stop** – halt current motion
-* **open / release** – open claw
-* **close / grab**   – close claw
-* **reset** – reboot Arduino (DTR toggle) and centre all servos
-* **hello** – raises arm (tilt + wrist), closes claw, and pan waves for 2 s
-
-Speed tuning constants at the top:
-    STEP_DEG   – degrees per tick (continuous motion)
-    TICK_HZ    – tick frequency
-    WAVE_*     – pan‑wave parameters
-"""
 from __future__ import annotations
 import argparse, json, queue, struct, sys, threading, time
 from pathlib import Path
@@ -22,38 +6,27 @@ import serial, serial.tools.list_ports as list_ports
 import sounddevice as sd
 from vosk import KaldiRecognizer, Model
 
-# ──────────────────────────────────────────────────────────────────────
-# Tuning constants
-# ──────────────────────────────────────────────────────────────────────
 SERVO_MIN, SERVO_MAX = 10, 170
-STEP_DEG   = 2              # ° per tick for continuous motion
-TICK_HZ    = 8              # ticks per second
+STEP_DEG   = 2
+TICK_HZ    = 8
 
-WAVE_DURATION = 2.0         # s   hello-wave total time
-WAVE_HZ       = 3           # pan flips per second
-WAVE_AMPL     = 20          # ±° pan amplitude
+WAVE_DURATION = 2.0
+WAVE_HZ       = 3
+WAVE_AMPL     = 20
 
-# ──────────────────────────────────────────────────────────────────────
-# Servo state
-# ──────────────────────────────────────────────────────────────────────
 servo_pan   = 90
 servo_tilt  = 90
-servo_level = 90  # wrist (servo3)
+servo_level = 90
 
 claw_grab_angles    = (170, 10)
 claw_release_angles = (10, 170)
 claw_grabbing = False
 
-_dir_x = _dir_y = 0  # continuous motion dir (−1,0,+1)
+_dir_x = _dir_y = 0
 
-# worker threads
 _move_evt = threading.Event()
 _mover_thr: threading.Thread | None = None
 _wave_thr:  threading.Thread | None = None
-
-# ──────────────────────────────────────────────────────────────────────
-# Serial helpers
-# ──────────────────────────────────────────────────────────────────────
 
 def _find_arduino() -> str | None:
     for p in list_ports.comports():
@@ -93,10 +66,6 @@ def _send_angles():
         except serial.SerialException:
             ser = _open_serial()
 
-# ──────────────────────────────────────────────────────────────────────
-# Continuous mover thread
-# ──────────────────────────────────────────────────────────────────────
-
 def _mover_loop():
     global servo_pan, servo_tilt, _dir_x, _dir_y
     tick = 1 / TICK_HZ
@@ -107,10 +76,6 @@ def _mover_loop():
         servo_tilt += STEP_DEG * _dir_y
         _send_angles()
         time.sleep(tick)
-
-# ──────────────────────────────────────────────────────────────────────
-# Hello wave thread (pan servo)
-# ──────────────────────────────────────────────────────────────────────
 
 def _pan_wave_loop(origin: int):
     global servo_pan
@@ -124,10 +89,6 @@ def _pan_wave_loop(origin: int):
         time.sleep(half)
     servo_pan = origin
     _send_angles()
-
-# ──────────────────────────────────────────────────────────────────────
-# Public entry – called by GUI / recogniser
-# ──────────────────────────────────────────────────────────────────────
 
 def handle_command(words: list[str]):
     global _dir_x, _dir_y, claw_grabbing, servo_pan, servo_tilt, servo_level, ser, _mover_thr, _wave_thr
@@ -157,11 +118,10 @@ def handle_command(words: list[str]):
             servo_pan = servo_tilt = servo_level = 90
             _dir_x = _dir_y = 0
         elif w == "hello":
-            # Raise arm fully up and wave pan servo
-            servo_level = SERVO_MAX          # wrist up
-            servo_tilt  = SERVO_MIN          # arm up
-            claw_grabbing = True             # close claw
-            _dir_x = _dir_y = 0              # pause continuous motion
+            servo_level = SERVO_MAX
+            servo_tilt  = SERVO_MIN
+            claw_grabbing = True
+            _dir_x = _dir_y = 0
             if not _wave_thr or not _wave_thr.is_alive():
                 origin = servo_pan
                 _wave_thr = threading.Thread(target=_pan_wave_loop, args=(origin,), daemon=True)
@@ -172,9 +132,6 @@ def handle_command(words: list[str]):
     if (_dir_x or _dir_y) and not _move_evt.is_set():
         _move_evt.set(); _mover_thr = threading.Thread(target=_mover_loop, daemon=True); _mover_thr.start()
 
-# ──────────────────────────────────────────────────────────────────────
-# Optional standalone recogniser (unchanged)
-# ──────────────────────────────────────────────────────────────────────
 VOICE_RATE, VOICE_BLOCK = 16_000, 8_000
 _voice_evt = threading.Event()
 
@@ -190,10 +147,6 @@ def _voice_loop(model_dir: Path):
                 txt = json.loads(rec.Result()).get("text", "").strip()
                 if txt:
                     print(">>", txt); handle_command(txt.split())
-
-# ---------------------------------------------------------------------
-# CLI  –  python voice_movement.py model_dir
-# ---------------------------------------------------------------------
 
 def main():
     ap = argparse.ArgumentParser("Continuous voice jog controller")
