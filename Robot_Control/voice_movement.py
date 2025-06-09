@@ -83,31 +83,21 @@ def _mover_loop():
         time.sleep(tick)
 
 def _pan_wave_loop(origin: int):
-    """
-    Wave the pan servo left ↔ right for WAVE_DURATION seconds while
-    opening/closing the claw in sync.
-
-    origin — current pan angle when the gesture begins.
-    """
     global servo_pan, claw_grabbing
 
-    half_period = 1 / (2 * WAVE_HZ)            # seconds between flips
+    half_period = 1 / (2 * WAVE_HZ)
     end_time    = time.time() + WAVE_DURATION
-    direction   = 1                            # 1 ⇒ right, −1 ⇒ left
+    direction   = 1
 
     while time.time() < end_time:
-        # Move pan
         servo_pan = _clamp(origin + direction * WAVE_AMPL)
-
-        # Example rhythm: open when moving right, close when left
         claw_grabbing = direction < 0
 
         _send_angles()
 
-        direction *= -1                        # flip direction
+        direction *= -1
         time.sleep(half_period)
 
-    # Return to neutral pose
     servo_pan      = origin
     claw_grabbing  = False
     _send_angles()
