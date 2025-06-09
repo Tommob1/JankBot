@@ -83,45 +83,35 @@ def _mover_loop():
         time.sleep(tick)
 
 def _pan_wave_loop(origin: int):
-    """Wave pan servo and open/close claw in sync for WAVE_DURATION seconds."""
-    global servo_pan, claw_grabbing
-    half_period = 1 / (2 * WAVE_HZ)
-    end_time    = time.time() + WAVE_DURATION
+    """
+    Wave the pan servo left ↔ right for WAVE_DURATION seconds while
+    opening/closing the claw in sync.
 
-    wave_right = True
+    origin — current pan angle when the gesture begins.
+    """
+    global servo_pan, claw_grabbing
+
+    half_period = 1 / (2 * WAVE_HZ)            # seconds between flips
+    end_time    = time.time() + WAVE_DURATION
+    direction   = 1                            # 1 ⇒ right, −1 ⇒ left
 
     while time.time() < end_time:
-        delta = WAVE_AMPL if wave_right else -WAVE_AMPL
-        servo_pan = _clamp(origin + delta)
-        claw_grabbing = not wave_right
+        # Move pan
+        servo_pan = _clamp(origin + direction * WAVE_AMPL)
+
+        # Example rhythm: open when moving right, close when left
+        claw_grabbing = direction < 0
 
         _send_angles()
-        wave_right = not wave_right
+
+        direction *= -1                        # flip direction
         time.sleep(half_period)
 
-    servo_pan = origin
-    claw_grabbing = True
-    _send_angles()
-    swing_right = not swing_right
-    time.sleep(half_period)
-
+    # Return to neutral pose
     servo_pan      = origin
     claw_grabbing  = False
     _send_angles()
-    toggle = not toggle
-    time.sleep(half)
-    servo_pan = origin
-    claw_grabbing = False
-    _send_angles()
-    _send_angles().time() + WAVE_DURATION
-    toggle = True
-    while time.time() < end:
-        servo_pan = _clamp(origin + (WAVE_AMPL if toggle else -WAVE_AMPL))
-        _send_angles()
-        toggle = not toggle
-        time.sleep(half)
-    servo_pan = origin
-    _send_angles()
+
 
 def handle_command(words: list[str]):
     global _dir_x, _dir_y, claw_grabbing, servo_pan, servo_tilt, servo_level, ser, _mover_thr, _wave_thr
