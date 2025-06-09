@@ -83,9 +83,19 @@ def _mover_loop():
         time.sleep(tick)
 
 def _pan_wave_loop(origin: int):
-    global servo_pan
+    global servo_pan, claw_grabbing
     half = 1 / (2 * WAVE_HZ)
     end  = time.time() + WAVE_DURATION
+    toggle = True
+    while time.time() < end:
+        servo_pan = _clamp(origin + (WAVE_AMPL if toggle else -WAVE_AMPL))
+        claw_grabbing = not toggle
+        _send_angles()
+        toggle = not toggle
+        time.sleep(half)
+    claw_grabbing = False
+    servo_pan = origin
+    _send_angles().time() + WAVE_DURATION
     toggle = True
     while time.time() < end:
         servo_pan = _clamp(origin + (WAVE_AMPL if toggle else -WAVE_AMPL))
