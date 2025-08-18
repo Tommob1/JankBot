@@ -9,7 +9,7 @@ import sounddevice as sd
 from vosk import KaldiRecognizer, Model
 
 SAMPLE_RATE = 16_000
-BLOCK_LEN   = 8_000          # try 4096 or None if your device complains
+BLOCK_LEN   = 8_000
 FORMAT      = "int16"
 
 HERE = Path(__file__).resolve().parent
@@ -43,12 +43,10 @@ print(f"[Vosk] using model: {model_dir}")
 if not model_dir.is_dir():
     sys.exit(f"Model directory '{model_dir}' not found.")
 
-# Configure input device if provided
 if args.device is not None:
     try:
-        # Allow passing either index or name
         dev = int(args.device) if args.device.isdigit() else args.device
-        sd.default.device = (None, dev)  # (playback, recording)
+        sd.default.device = (None, dev)
     except Exception as e:
         sys.exit(f"Invalid --device '{args.device}': {e}")
 
@@ -63,12 +61,10 @@ audio_q: queue.Queue[bytes] = queue.Queue(maxsize=20)
 
 def audio_cb(indata, frames, t, status):
     if status:
-        # Common: Input overflow/underflow; not fatal
         print("[Audio][STATUS]", status, file=sys.stderr)
     try:
         audio_q.put_nowait(bytes(indata))
     except queue.Full:
-        # Drop if we're lagging; recognizer will catch up next block
         pass
 
 def open_stream():
