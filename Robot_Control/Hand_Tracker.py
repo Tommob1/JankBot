@@ -11,30 +11,37 @@ hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
 ser = None
 
-claw_grabbing = False
+claw_grabbing = True
 claw_grab_pos = (170, 10)
 claw_release_pos = (10, 170)
 
 def is_fist(landmarks):
-    wrist = landmarks[mp_hands.HandLandmark.WRIST]
-    thumb_tip = landmarks[mp_hands.HandLandmark.THUMB_TIP]
-    index_tip = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+    # Fingers are curled when the fingertip is below its middle joint (in y),
+    # remembering that y increases downward in image coordinates.
+    def curled(tip, pip):
+        return tip.y > pip.y
+
+    index_tip  = landmarks[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+    index_pip  = landmarks[mp_hands.HandLandmark.INDEX_FINGER_PIP]
     middle_tip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-    ring_tip = landmarks[mp_hands.HandLandmark.RING_FINGER_TIP]
-    pinky_tip = landmarks[mp_hands.HandLandmark.PINKY_TIP]
+    middle_pip = landmarks[mp_hands.HandLandmark.MIDDLE_FINGER_PIP]
+    ring_tip   = landmarks[mp_hands.HandLandmark.RING_FINGER_TIP]
+    ring_pip   = landmarks[mp_hands.HandLandmark.RING_FINGER_PIP]
+    pinky_tip  = landmarks[mp_hands.HandLandmark.PINKY_TIP]
+    pinky_pip  = landmarks[mp_hands.HandLandmark.PINKY_PIP]
 
-    def distance(point1, point2):
-        return np.sqrt((point1.x - point2.x)**2 + (point1.y - point2.y)**2)
+    curled_count = 0
+    for tip, pip in [
+        (index_tip, index_pip),
+        (middle_tip, middle_pip),
+        (ring_tip, ring_pip),
+        (pinky_tip, pinky_pip),
+    ]:
+        if curled(tip, pip):
+            curled_count += 1
 
-    d_thumb = distance(wrist, thumb_tip)
-    d_index = distance(wrist, index_tip)
-    d_middle = distance(wrist, middle_tip)
-    d_ring = distance(wrist, ring_tip)
-    d_pinky = distance(wrist, pinky_tip)
-
-    if d_thumb < 0.2 and d_index < 0.2 and d_middle < 0.2 and d_ring < 0.2 and d_pinky < 0.2:
-        return True
-    return False
+    # At least 3 fingers curled = fist
+    return curled_count >= 3
 
 def is_hand_open(landmarks):
     wrist = landmarks[mp_hands.HandLandmark.WRIST]
@@ -92,9 +99,9 @@ def send_command():
     servo3_pos = max(0, min(servo3_pos, 180))
 
     if claw_grabbing:
-        servo4_pos, servo5_pos = 10, 170
+        servo4_pos, servo5_pos = claw_grab_pos
     else:
-        servo4_pos, servo5_pos = 170, 10
+        servo4_pos, servo5_pos = claw_release_pos
 
     data = struct.pack('HHHHH', servo1_pos, servo2_pos, servo3_pos, servo4_pos, servo5_pos)
     if ser:
@@ -133,8 +140,17 @@ def start_hand_tracker():
 
         if hand_landmarks_list:
             hand_landmarks = hand_landmarks_list[0].landmark
+
             hand_open = is_hand_open(hand_landmarks)
-            claw_grabbing = not hand_open
+            hand_fist = is_fist(hand_landmarks)
+
+            # --- State machine for claw ---
+            # Only close on clear fist, only open on clear open-hand
+            if hand_fist and not claw_grabbing:
+                claw_grabbing = True
+            elif hand_open and claw_grabbing:
+                claw_grabbing = False
+            # else: keep previous claw_grabbing state (ignore weird poses/rotations)
 
             if claw_grabbing != previous_claw_state:
                 print(f"Claw state: {'Grabbing' if claw_grabbing else 'Releasing'}")

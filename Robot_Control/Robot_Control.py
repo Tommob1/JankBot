@@ -17,8 +17,8 @@ tracking_mouse = False
 tracking_hand = False
 claw_grabbing = False
 
-claw_grab_pos = (170, 10)
-claw_release_pos = (10, 170)
+claw_grab_pos = (100, 45)
+claw_release_pos = (1000, 150)
 
 mouse_x, mouse_y = 0, 0
 servo1_pos, servo2_pos, servo3_pos = 90, 90, 90
