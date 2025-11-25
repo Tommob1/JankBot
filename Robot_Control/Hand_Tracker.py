@@ -16,8 +16,6 @@ claw_grab_pos = (170, 10)
 claw_release_pos = (10, 170)
 
 def is_fist(landmarks):
-    # Fingers are curled when the fingertip is below its middle joint (in y),
-    # remembering that y increases downward in image coordinates.
     def curled(tip, pip):
         return tip.y > pip.y
 
@@ -39,8 +37,6 @@ def is_fist(landmarks):
     ]:
         if curled(tip, pip):
             curled_count += 1
-
-    # At least 3 fingers curled = fist
     return curled_count >= 3
 
 def is_hand_open(landmarks):
@@ -144,13 +140,10 @@ def start_hand_tracker():
             hand_open = is_hand_open(hand_landmarks)
             hand_fist = is_fist(hand_landmarks)
 
-            # --- State machine for claw ---
-            # Only close on clear fist, only open on clear open-hand
             if hand_fist and not claw_grabbing:
                 claw_grabbing = True
             elif hand_open and claw_grabbing:
                 claw_grabbing = False
-            # else: keep previous claw_grabbing state (ignore weird poses/rotations)
 
             if claw_grabbing != previous_claw_state:
                 print(f"Claw state: {'Grabbing' if claw_grabbing else 'Releasing'}")
