@@ -122,9 +122,9 @@ def handle_command(words: list[str]):
         elif w == "stop":
             _dir_x = _dir_y = 0
         elif w in {"open", "release"}:
-            claw_grabbing = True
-        elif w in {"close", "grab"}:
             claw_grabbing = False
+        elif w in {"close", "grab"}:
+            claw_grabbing = True
         elif w == "reset":
             if ser:
                 try:
