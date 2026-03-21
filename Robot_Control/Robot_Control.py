@@ -34,10 +34,9 @@ serial_lock = threading.Lock()
 claw_grabbing = False
 claw_busy = False
 
-# Tune these carefully
-CLAW_OPEN_POS = 140
-CLAW_CLOSED_POS = 105
-CLAW_HOLD_POS = 108  # slight relief after closing
+CLAW_OPEN_POS = 160
+CLAW_CLOSED_POS = 100
+CLAW_HOLD_POS = 108
 
 # Voice
 voice_thread = None
@@ -89,8 +88,6 @@ def send_command():
 
     s1 = clamp(servo1_pos)
     s2 = clamp(servo2_pos)
-
-    # ONLY 2 SERVOS
     data = struct.pack('HH', s1, s2)
 
     if ser:
@@ -145,11 +142,7 @@ def close_claw():
 
     claw_busy = True
     claw_grabbing = True
-
-    # One direct close move
     set_claw_position(CLAW_CLOSED_POS)
-
-    # Small relief after brief pause
     time.sleep(0.12)
     set_claw_position(CLAW_HOLD_POS)
 
@@ -188,8 +181,6 @@ def on_move(x, y):
 
     if tracking_mouse:
         mouse_x, mouse_y = x, y
-
-        # Only servo1 follows the mouse now
         servo1_pos = clamp(map_value(mouse_x, 0, 1920, 10, 170))
 
         update_telemetry()
@@ -197,7 +188,6 @@ def on_move(x, y):
 
 
 def on_click(x, y, button, pressed):
-    # Only toggle on LEFT mouse button press
     if pressed and button == mouse.Button.left:
         print("Toggling claw...")
         toggle_claw()
