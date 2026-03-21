@@ -21,7 +21,6 @@ tracking_hand = False
 
 mouse_x, mouse_y = 0, 0
 
-# Only 2 servos total
 # servo1 = forearm spin
 # servo2 = claw
 servo1_pos = 90
