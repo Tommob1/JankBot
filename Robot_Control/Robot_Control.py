@@ -13,9 +13,7 @@ import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 from voice_movement import handle_command
 
-# =========================
 # GLOBAL STATE
-# =========================
 tracking_mouse = False
 tracking_hand = False
 
@@ -24,7 +22,7 @@ mouse_x, mouse_y = 0, 0
 # servo1 = forearm spin
 # servo2 = claw
 servo1_pos = 90
-servo2_pos = 140  # claw starts open
+servo2_pos = 140
 
 listener = None
 ser = None
@@ -44,10 +42,7 @@ VOICE_SAMPLE_RATE = 16_000
 VOICE_BLOCK_LEN = 8_000
 VOICE_MODEL_DIR = "models/vosk-model-small-en-us-0.15"
 
-
-# =========================
 # HELPERS
-# =========================
 def clamp(val, lo=0, hi=180):
     return max(lo, min(int(val), hi))
 
@@ -122,10 +117,7 @@ def load_text_character_by_character(widget, text, index=0, delay=50):
 
         widget.after(delay, lambda: load_text_character_by_character(widget, text, index + 1, delay))
 
-
-# =========================
 # CLAW CONTROL
-# =========================
 def set_claw_position(target):
     global servo2_pos
     servo2_pos = clamp(target)
@@ -171,10 +163,7 @@ def toggle_claw():
     else:
         threading.Thread(target=close_claw, daemon=True).start()
 
-
-# =========================
 # MOUSE CONTROL
-# =========================
 def on_move(x, y):
     global mouse_x, mouse_y, servo1_pos
 
@@ -218,10 +207,7 @@ def stop_mouse_tracking():
     activate_mouse_button.config(state="normal")
     deactivate_mouse_button.config(state="disabled")
 
-
-# =========================
 # HAND TRACKING
-# =========================
 def start_hand_tracking():
     global tracking_hand
     tracking_hand = True
@@ -237,10 +223,7 @@ def stop_hand_tracking():
     activate_hand_button.config(state="normal")
     deactivate_hand_button.config(state="disabled")
 
-
-# =========================
 # VOICE CONTROL
-# =========================
 def voice_worker():
     try:
         model = Model(VOICE_MODEL_DIR)
@@ -299,10 +282,7 @@ def stop_voice():
     activate_voice_btn.config(state="normal")
     deactivate_voice_btn.config(state="disabled")
 
-
-# =========================
 # UI
-# =========================
 initialize_serial_connection()
 
 root = tk.Tk()
