@@ -32,8 +32,7 @@ claw_grabbing = False
 claw_busy = False
 
 CLAW_OPEN_POS = 160
-CLAW_CLOSED_POS = 100
-CLAW_HOLD_POS = 108
+CLAW_CLOSED_POS = 60
 
 # Voice
 voice_thread = None
@@ -134,8 +133,6 @@ def close_claw():
     claw_busy = True
     claw_grabbing = True
     set_claw_position(CLAW_CLOSED_POS)
-    time.sleep(0.12)
-    set_claw_position(CLAW_HOLD_POS)
 
     claw_busy = False
 
