@@ -19,10 +19,9 @@ tracking_hand = False
 
 mouse_x, mouse_y = 0, 0
 
-# servo1 = forearm spin
-# servo2 = claw
 servo1_pos = 90
 servo2_pos = 140
+servo3_pos = 90
 
 listener = None
 ser = None
@@ -77,11 +76,13 @@ def map_value(x, in_min, in_max, out_min, out_max):
 
 
 def send_command():
-    global ser, servo1_pos, servo2_pos
+    global ser, servo1_pos, servo2_pos, servo3_pos
 
     s1 = clamp(servo1_pos)
     s2 = clamp(servo2_pos)
-    data = struct.pack('HH', s1, s2)
+    s3 = clamp(servo3_pos)
+
+    data = struct.pack('<BHHH', 255, s1, s2, s3)
 
     if ser:
         try:
@@ -98,7 +99,7 @@ def send_command():
 def update_telemetry():
     mouse_pos_label.config(text=f"Mouse Position: ({mouse_x}, {mouse_y})")
     servo_pos_label.config(
-        text=f"Servo Positions: (Servo1: {servo1_pos}, Servo2/Claw: {servo2_pos})"
+        text=f"Servo Positions: (Servo1: {servo1_pos}, Servo2/Claw: {servo2_pos}, Servo3: {servo3_pos})"
     )
     claw_state_label.config(text=f"Claw State: {'Grabbing' if claw_grabbing else 'Released'}")
 
@@ -162,11 +163,12 @@ def toggle_claw():
 
 # MOUSE CONTROL
 def on_move(x, y):
-    global mouse_x, mouse_y, servo1_pos
+    global mouse_x, mouse_y, servo1_pos, servo3_pos
 
     if tracking_mouse:
         mouse_x, mouse_y = x, y
         servo1_pos = clamp(map_value(mouse_x, 0, 1920, 10, 170))
+        servo3_pos = clamp(map_value(mouse_y, 0, 1920, 10, 170))
 
         update_telemetry()
         send_command()
@@ -232,7 +234,7 @@ def voice_worker():
 
     q_audio: queue.Queue[bytes] = queue.Queue()
 
-    def audio_cb(indata, frames, time_info, status):
+    def audio_cb(indata, status):
         if status:
             print(status)
         q_audio.put(bytes(indata))

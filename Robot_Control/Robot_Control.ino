@@ -2,33 +2,46 @@
 
 Servo wristServo;
 Servo clawServo;
+Servo elbowServo;
 
 int wristPos = 90;
-int clawPos = 140;  // start open
+int clawPos = 140; 
+int elbowPos = 90; // start open
 
 void setup() {
   wristServo.attach(11);  // wrist/spin servo
   clawServo.attach(12);   // claw servo
+  elbowServo.attach(13);  // elbow servo
 
   wristServo.write(wristPos);
   clawServo.write(clawPos);
+  elbowServo.write(elbowPos);
 
   Serial.begin(9600);
 }
 
 void loop() {
-  // Expect exactly 2 unsigned short values = 4 bytes total
-  if (Serial.available() >= 4) {
-    byte buffer[4];
-    Serial.readBytes(buffer, 4);
+  if (Serial.available() >= 7) {
+    byte startByte = Serial.read();
+
+    // Ignore garbage until we find the packet start marker
+    if (startByte != 255) {
+      return;
+    }
+
+    byte buffer[6];
+    Serial.readBytes(buffer, 6);
 
     wristPos = buffer[0] | (buffer[1] << 8);
     clawPos  = buffer[2] | (buffer[3] << 8);
+    elbowPos = buffer[4] | (buffer[5] << 8);
 
     wristPos = constrain(wristPos, 0, 180);
     clawPos  = constrain(clawPos, 0, 180);
+    elbowPos = constrain(elbowPos, 0, 180);
 
     wristServo.write(wristPos);
     clawServo.write(clawPos);
+    elbowServo.write(elbowPos);
   }
 }
