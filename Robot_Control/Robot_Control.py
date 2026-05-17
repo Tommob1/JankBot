@@ -10,6 +10,7 @@ import threading
 import queue
 import json
 import time
+import hid
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 from voice_movement import handle_command
@@ -236,6 +237,18 @@ def list_hid_devices():
             f"Product: {device['product_string']}"
         )
 
+def find_joystick_device():
+    for device in hid.enumerate():
+        vid = device["vendor_id"]
+        pid = device["product_id"]
+        product = device.get("product_string", "")
+
+        if vid == JOYSTICK_VID and pid == JOYSTICK_PID:
+            print(f"Found joystick: {product}")
+            print(f"Path: {device['path']}")
+            return device
+
+    return None
 
 def joystick_worker():
     global tracking_joystick
@@ -246,10 +259,20 @@ def joystick_worker():
     joystick = None
 
     try:
-        print(f"Connecting to joystick: VID={hex(JOYSTICK_VID)}, PID={hex(JOYSTICK_PID)}")
+        list_hid_devices()
+
+        print(f"Looking for joystick: VID={hex(JOYSTICK_VID)}, PID={hex(JOYSTICK_PID)}")
+
+        device_info = find_joystick_device()
+
+        if device_info is None:
+            print("[Joystick] device not found.")
+            return
 
         joystick = hid.device()
-        joystick.open(JOYSTICK_VID, JOYSTICK_PID)
+
+        # More reliable on macOS than joystick.open(VID, PID)
+        joystick.open_path(device_info["path"])
 
         print(f"Connected to joystick: {joystick.get_product_string()}")
         print("Joystick control active.")
@@ -260,19 +283,14 @@ def joystick_worker():
             if not data:
                 continue
 
-            # Print this temporarily so you can identify the correct indexes.
-            # Once working, comment this line out.
             print(f"Raw Joystick Data: {data}")
 
-            # These indexes are educated guesses.
-            # You may need to adjust them based on your raw data output.
             joystick_x = data[0]
             joystick_y = data[1]
 
             new_servo1 = clamp(map_value(joystick_x, 0, 255, 10, 170))
             new_servo3 = clamp(map_value(joystick_y, 0, 255, 10, 170))
 
-            # Ignore tiny changes to reduce jitter
             if abs(new_servo1 - servo1_pos) < 2 and abs(new_servo3 - servo3_pos) < 2:
                 continue
 
@@ -290,6 +308,7 @@ def joystick_worker():
 
     finally:
         tracking_joystick = False
+        joystick_running.clear()
 
         if joystick is not None:
             try:
