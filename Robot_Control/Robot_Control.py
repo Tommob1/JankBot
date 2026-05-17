@@ -311,8 +311,11 @@ def start_joystick_tracking():
         return
 
     # Stop other live control modes so they do not fight each other
-    stop_mouse_tracking()
-    stop_hand_tracking()
+    if tracking_mouse:
+        stop_mouse_tracking()
+
+    if tracking_hand:
+        stop_hand_tracking()
 
     tracking_joystick = True
     joystick_running.set()
@@ -344,8 +347,19 @@ def start_hand_tracking():
 
 def stop_hand_tracking():
     global tracking_hand
+
+    if not tracking_hand:
+        return
+
     tracking_hand = False
-    Hand_Tracker.stop_hand_tracker()
+
+    try:
+        Hand_Tracker.stop_hand_tracker()
+    except NameError as e:
+        print(f"[Hand Tracking] stop ignored: {e}")
+    except Exception as e:
+        print(f"[Hand Tracking] stop error: {e}")
+
     activate_hand_button.config(state="normal")
     deactivate_hand_button.config(state="disabled")
 
