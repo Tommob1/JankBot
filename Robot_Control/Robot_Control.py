@@ -1,6 +1,7 @@
 import tkinter as tk
 from logo import ascii_art
 import Hand_Tracker
+import hid
 from pynput import mouse
 import struct
 import serial
@@ -32,6 +33,21 @@ claw_busy = False
 
 CLAW_OPEN_POS = 160
 CLAW_CLOSED_POS = 60
+
+# JOYSTICK CONTROL
+tracking_joystick = False
+joystick_thread = None
+joystick_running = threading.Event()
+
+JOYSTICK_VID = 0x046D
+JOYSTICK_PID = 0xC215
+
+joystick_x = 0
+joystick_y = 0
+joystick_button = 0
+
+last_joystick_send_time = 0
+JOYSTICK_SEND_INTERVAL = 0.03  # about 33 commands per second
 
 # Voice
 voice_thread = None
@@ -103,6 +119,8 @@ def update_telemetry():
     )
     claw_state_label.config(text=f"Claw State: {'Grabbing' if claw_grabbing else 'Released'}")
 
+    if 'joystick_pos_label' in globals():
+        joystick_pos_label.config(text=f"Joystick Position: ({joystick_x}, {joystick_y})")
 
 def load_text_character_by_character(widget, text, index=0, delay=50):
     if index < len(text):
@@ -161,6 +179,8 @@ def toggle_claw():
     else:
         threading.Thread(target=close_claw, daemon=True).start()
 
+
+
 # MOUSE CONTROL
 def on_move(x, y):
     global mouse_x, mouse_y, servo1_pos, servo3_pos
@@ -205,6 +225,113 @@ def stop_mouse_tracking():
 
     activate_mouse_button.config(state="normal")
     deactivate_mouse_button.config(state="disabled")
+
+# JOYSTICK CONTROL
+def list_hid_devices():
+    print("Listing all HID devices:")
+    for device in hid.enumerate():
+        print(
+            f"VID: {hex(device['vendor_id'])}, "
+            f"PID: {hex(device['product_id'])}, "
+            f"Product: {device['product_string']}"
+        )
+
+
+def joystick_worker():
+    global tracking_joystick
+    global joystick_x, joystick_y, joystick_button
+    global servo1_pos, servo3_pos
+    global last_joystick_send_time
+
+    joystick = None
+
+    try:
+        print(f"Connecting to joystick: VID={hex(JOYSTICK_VID)}, PID={hex(JOYSTICK_PID)}")
+
+        joystick = hid.device()
+        joystick.open(JOYSTICK_VID, JOYSTICK_PID)
+
+        print(f"Connected to joystick: {joystick.get_product_string()}")
+        print("Joystick control active.")
+
+        while joystick_running.is_set():
+            data = joystick.read(64, timeout_ms=50)
+
+            if not data:
+                continue
+
+            # Print this temporarily so you can identify the correct indexes.
+            # Once working, comment this line out.
+            print(f"Raw Joystick Data: {data}")
+
+            # These indexes are educated guesses.
+            # You may need to adjust them based on your raw data output.
+            joystick_x = data[0]
+            joystick_y = data[1]
+
+            new_servo1 = clamp(map_value(joystick_x, 0, 255, 10, 170))
+            new_servo3 = clamp(map_value(joystick_y, 0, 255, 10, 170))
+
+            # Ignore tiny changes to reduce jitter
+            if abs(new_servo1 - servo1_pos) < 2 and abs(new_servo3 - servo3_pos) < 2:
+                continue
+
+            servo1_pos = new_servo1
+            servo3_pos = new_servo3
+
+            now = time.time()
+            if now - last_joystick_send_time >= JOYSTICK_SEND_INTERVAL:
+                root.after(0, update_telemetry)
+                send_command()
+                last_joystick_send_time = now
+
+    except Exception as e:
+        print(f"[Joystick] error: {e}")
+
+    finally:
+        tracking_joystick = False
+
+        if joystick is not None:
+            try:
+                joystick.close()
+                print("Joystick connection closed.")
+            except Exception:
+                pass
+
+        root.after(0, lambda: activate_joystick_button.config(state="normal"))
+        root.after(0, lambda: deactivate_joystick_button.config(state="disabled"))
+
+        print("Joystick control stopped.")
+
+
+def start_joystick_tracking():
+    global tracking_joystick, joystick_thread
+
+    if tracking_joystick:
+        return
+
+    # Stop other live control modes so they do not fight each other
+    stop_mouse_tracking()
+    stop_hand_tracking()
+
+    tracking_joystick = True
+    joystick_running.set()
+
+    joystick_thread = threading.Thread(target=joystick_worker, daemon=True)
+    joystick_thread.start()
+
+    activate_joystick_button.config(state="disabled")
+    deactivate_joystick_button.config(state="normal")
+
+
+def stop_joystick_tracking():
+    global tracking_joystick
+
+    tracking_joystick = False
+    joystick_running.clear()
+
+    activate_joystick_button.config(state="normal")
+    deactivate_joystick_button.config(state="disabled")
 
 # HAND TRACKING
 def start_hand_tracking():
@@ -339,6 +466,25 @@ deactivate_hand_button = tk.Button(
 deactivate_hand_button.pack(pady=10, padx=10)
 deactivate_hand_button.config(state="disabled")
 
+activate_joystick_button = tk.Button(
+    root,
+    text="Activate Joystick Control",
+    command=start_joystick_tracking,
+    bg='purple',
+    fg='black'
+)
+activate_joystick_button.pack(pady=10, padx=10)
+
+deactivate_joystick_button = tk.Button(
+    root,
+    text="Deactivate Joystick Control",
+    command=stop_joystick_tracking,
+    bg='orange',
+    fg='black'
+)
+deactivate_joystick_button.pack(pady=10, padx=10)
+deactivate_joystick_button.config(state="disabled")
+
 activate_voice_btn = tk.Button(
     root,
     text="Activate Voice Cmd",
@@ -365,6 +511,14 @@ mouse_pos_label = tk.Label(
     fg=text_color
 )
 mouse_pos_label.pack(pady=10)
+
+joystick_pos_label = tk.Label(
+    root,
+    text="Joystick Position: (0, 0)",
+    bg='black',
+    fg=text_color
+)
+joystick_pos_label.pack(pady=10)
 
 servo_pos_label = tk.Label(
     root,
